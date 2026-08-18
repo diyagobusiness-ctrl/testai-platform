@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    networks:
+      - testai-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - DATABASE_URL=postgresql://testai:testai123@postgres:5432/testai
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-key-min-32-chars
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - testai-network
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=testai
+      - POSTGRES_PASSWORD=testai123
+      - POSTGRES_DB=testai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - testai-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - testai-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  testai-network:
+    driver: bridge
