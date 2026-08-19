@@ -37,11 +37,12 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
   'https://testai-platform.vercel.app',
+  'https://frontend-ashen-six-h007fxz3fe.vercel.app',
 ].filter(Boolean) as string[]
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
       callback(null, true)
     } else {
       callback(new Error('Not allowed by CORS'))
