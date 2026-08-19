@@ -7,20 +7,17 @@ const poolConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
 }
 
-if (process.env.NODE_ENV === 'production') {
-  poolConfig.ssl = {
-    rejectUnauthorized: false,
-  }
+poolConfig.ssl = {
+  rejectUnauthorized: false,
 }
 
 export const pool = new Pool(poolConfig)
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err)
-  // Don't exit - allow pool to recover when DB comes back
 })
 
 export const query = async (text: string, params?: unknown[]) => {

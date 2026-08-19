@@ -129,7 +129,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       getRedirectPath: () => {
-        const { role } = get()
+        const { role, tenant } = get()
         
         switch (role) {
           case 'SUPER_ADMIN':
@@ -137,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
           case 'TENANT_ADMIN':
             return '/admin/dashboard'
           case 'STUDENT':
-            return '/student/dashboard'
+            return tenant?.slug ? `/${tenant.slug}/student/dashboard` : '/student/dashboard'
           default:
             return '/login'
         }

@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 import { CardHover } from '@/components/animations/CardHover'
 import { StaggerList } from '@/components/animations/StaggerList'
 import { Mic, Code2, Briefcase, FileText, Brain, TrendingUp, Award, Clock } from 'lucide-react'
 
 export default function StudentDashboard() {
+  const { tenant } = useAuth()
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const tenantSlug = tenant?.slug || 'acme'
 
   useEffect(() => {
     api.getDashboard()
@@ -19,11 +23,11 @@ export default function StudentDashboard() {
   }, [])
 
   const modules = [
-    { name: 'Voice AI Practice', icon: Mic, href: '/student/voice-ai', color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-    { name: 'Y-Codes Challenges', icon: Code2, href: '/student/y-codes', color: 'text-green-500', bgColor: 'bg-green-500/10' },
-    { name: 'Job Hunt', icon: Briefcase, href: '/student/job-hunt', color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
-    { name: 'Resume Craft', icon: FileText, href: '/student/resume-craft', color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-    { name: 'Aptitude Arena', icon: Brain, href: '/student/aptitude-arena', color: 'text-red-500', bgColor: 'bg-red-500/10' },
+    { name: 'Voice AI Practice', icon: Mic, href: `/${tenantSlug}/student/voice-ai`, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+    { name: 'Y-Codes Challenges', icon: Code2, href: `/${tenantSlug}/student/y-codes`, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { name: 'Job Hunt', icon: Briefcase, href: `/${tenantSlug}/student/job-hunt`, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+    { name: 'Resume Craft', icon: FileText, href: `/${tenantSlug}/student/resume-craft`, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { name: 'Aptitude Arena', icon: Brain, href: `/${tenantSlug}/student/aptitude-arena`, color: 'text-red-500', bgColor: 'bg-red-500/10' },
   ]
 
   return (
