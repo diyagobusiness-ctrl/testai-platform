@@ -3,7 +3,7 @@ services:
     name: testai-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install && npm run build
+    buildCommand: cd backend && npm install --include=dev && npm run build
     startCommand: node dist/server.js
     envVars:
       - key: NODE_ENV
