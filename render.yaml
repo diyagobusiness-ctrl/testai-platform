@@ -3,8 +3,8 @@ services:
     name: testai-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install
-    startCommand: node --import tsx/esm src/server.ts
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
     envVars:
       - key: NODE_ENV
         value: production
