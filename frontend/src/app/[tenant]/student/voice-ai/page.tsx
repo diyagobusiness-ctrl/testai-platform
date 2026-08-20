@@ -191,7 +191,7 @@ export default function VoiceAIPage() {
   }, [])
 
   const { speak, stop: stopSpeaking, isSpeaking } = useSpeechSynthesis({
-    rate: 0.92,
+    rate: 0.95,
     pitch: 1.0,
     onEnd: onSpeechEnd,
   })
@@ -292,7 +292,7 @@ export default function VoiceAIPage() {
     setPhase('greeting')
     startTimeRef.current = Date.now()
 
-    const greeting = `Welcome! I am your AI interviewer for today's ${MODES.find((m) => m.id === selectedMode)?.label} session. ${fileContent ? "I have reviewed your resume and have some questions ready." : "I will ask you a series of questions to help you practice."} Feel free to take your time with each answer. Let us begin!`
+    const greeting = `Hi there! I'm Aria, your AI interview coach. ${fileContent ? "I've taken a look at your resume and I'm excited to dive in!" : `I'll be your interviewer for this ${MODES.find((m) => m.id === selectedMode)?.label} session.`} Don't worry, this is a safe space to practice. Take your time with each answer, and I'll give you feedback along the way. Ready? Let's get started!`
 
     addMessage('interviewer', greeting)
     speak(greeting)
@@ -326,7 +326,7 @@ export default function VoiceAIPage() {
     } else {
       addMessage('candidate', '[No answer provided]')
       setPhase('ai-responding')
-      const skipMsg = "That is okay. Let us move to the next question."
+      const skipMsg = "No worries at all! Let's move on to the next one."
       addMessage('interviewer', skipMsg)
       speak(skipMsg)
       setTimeout(() => moveToNext(), 1500)
@@ -337,7 +337,7 @@ export default function VoiceAIPage() {
     stopListening()
     stopSpeaking()
     setPhase('ai-responding')
-    const msg = "No problem. Let us move on to the next question."
+    const msg = "No problem! Let's continue with the next question."
     addMessage('interviewer', msg)
     speak(msg)
     setTimeout(() => moveToNext(), 1500)
@@ -436,73 +436,252 @@ export default function VoiceAIPage() {
           )}
         </motion.div>
 
-        {/* Pre-interview: Mode Selection + Upload */}
+        {/* Pre-interview: Stunning Hero + Mode Selection */}
         {!interviewStarted && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 max-w-3xl mx-auto">
-              {MODES.map((mode, i) => (
-                <motion.button
-                  key={mode.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => setSelectedMode(mode.id)}
-                  className={cn(
-                    'relative rounded-xl p-4 text-left transition-all border',
-                    selectedMode === mode.id
-                      ? 'bg-white/10 border-blue-500/50 shadow-lg shadow-blue-500/10'
-                      : 'bg-white/5 border-white/10 hover:bg-white/8'
-                  )}
+          <div className="relative">
+            {/* Hero Section */}
+            <div className="relative flex flex-col lg:flex-row items-center gap-8 lg:gap-12 mb-10">
+              {/* Left: Text */}
+              <motion.div
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="flex-1 text-center lg:text-left"
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 mb-4"
                 >
-                  <div className="text-2xl mb-2">{mode.icon}</div>
-                  <div className="text-sm font-medium text-white">{mode.label}</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">{mode.description}</div>
-                </motion.button>
-              ))}
-            </div>
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                  <span className="text-xs font-medium text-indigo-300">AI-Powered Interview Coach</span>
+                </motion.div>
 
-            {showUpload && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-6 max-w-3xl mx-auto">
-                <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx" onChange={handleFileUpload} className="hidden" />
-                <div className="flex items-center gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Upload className="h-5 w-5 text-blue-400" />
-                      <h3 className="text-white font-medium">Resume / Job Description</h3>
-                    </div>
-                    <p className="text-zinc-400 text-sm mb-4">
-                      Upload your resume or job description for personalized interview questions.
-                    </p>
-                    {uploadedFile ? (
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                          <FileText className="h-4 w-4 text-green-400" />
-                          <span className="text-sm text-green-300">{uploadedFile.name}</span>
-                        </div>
-                        <button onClick={() => { setUploadedFile(null); setFileContent('') }} className="text-zinc-400 hover:text-red-400">
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => fileInputRef.current?.click()} className="rounded-lg bg-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/15 border border-white/10 transition">
-                        Choose file
-                      </button>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={startInterviewFlow}
-                      className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-blue-600/20"
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                  Meet <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">Aria</span>,
+                  <br />your interview coach
+                </h1>
+
+                <p className="text-zinc-400 text-base md:text-lg max-w-lg mb-6 leading-relaxed">
+                  Practice with an AI that listens, responds, and gives you real-time feedback.
+                  Build confidence before your next big interview.
+                </p>
+
+                <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                  {[
+                    { label: 'Real-time feedback', icon: '🎯' },
+                    { label: 'Voice conversation', icon: '🗣️' },
+                    { label: 'Live transcription', icon: '📝' },
+                  ].map((feat, i) => (
+                    <motion.div
+                      key={feat.label}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      className="flex items-center gap-2 text-sm text-zinc-300"
                     >
-                      Start Interview
-                    </motion.button>
-                  </div>
+                      <span>{feat.icon}</span>
+                      <span>{feat.label}</span>
+                    </motion.div>
+                  ))}
                 </div>
               </motion.div>
-            )}
-          </>
+
+              {/* Right: Animated Avatar Preview */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="relative w-64 h-64 md:w-80 md:h-80"
+              >
+                {/* Glowing orb behind avatar */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.1) 50%, transparent 70%)',
+                  }}
+                  animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+
+                {/* Animated rings */}
+                <motion.div
+                  className="absolute inset-4 rounded-full border border-purple-400/20"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                />
+                <motion.div
+                  className="absolute inset-8 rounded-full border border-indigo-400/15"
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+                />
+
+                {/* Mini avatar */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg viewBox="0 0 400 420" className="w-48 h-48 md:w-60 md:h-60">
+                    <defs>
+                      <radialGradient id="heroFaceGrad" cx="50%" cy="35%" r="55%">
+                        <stop offset="0%" stopColor="#fde8d8" />
+                        <stop offset="60%" stopColor="#f5d0b0" />
+                        <stop offset="100%" stopColor="#e8b898" />
+                      </radialGradient>
+                      <linearGradient id="heroHairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#1a1a2e" />
+                        <stop offset="50%" stopColor="#2d2d44" />
+                        <stop offset="100%" stopColor="#1a1a2e" />
+                      </linearGradient>
+                      <linearGradient id="heroBlazerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#1e1b4b" />
+                        <stop offset="100%" stopColor="#0f0a2e" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M 115 340 Q 115 300 155 275 L 175 262 L 200 254 L 225 262 L 245 275 Q 285 300 285 340 L 285 420 L 115 420 Z" fill="url(#heroBlazerGrad)" />
+                    <path d="M 185 262 L 195 278 L 200 275 L 205 278 L 215 262" fill="#e8e0f0" />
+                    <circle cx="200" cy="278" r="3" fill="#a78bfa" />
+                    <rect x="187" y="235" width="26" height="28" rx="6" fill="#e8b898" />
+                    <ellipse cx="200" cy="145" rx="82" ry="90" fill="url(#heroHairGrad)" />
+                    <ellipse cx="200" cy="152" rx="68" ry="78" fill="url(#heroFaceGrad)" />
+                    <path d="M 132 148 Q 128 70 200 58 Q 272 70 268 148 Q 265 105 240 90 Q 210 75 170 85 Q 140 95 132 148 Z" fill="url(#heroHairGrad)" />
+                    <path d="M 132 148 Q 125 175 120 220 Q 118 240 125 260" stroke="#2d2d44" strokeWidth="8" fill="none" strokeLinecap="round" />
+                    <path d="M 268 148 Q 275 175 280 220 Q 282 240 275 260" stroke="#2d2d44" strokeWidth="8" fill="none" strokeLinecap="round" />
+                    <circle cx="132" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
+                    <circle cx="268" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
+                    <path d="M 158 128 Q 165 122 172 128" stroke="#1a1a2e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    <circle cx="165" cy="132" r="4.5" fill="#1a1a2e" />
+                    <circle cx="166" cy="131" r="1.8" fill="#0a0a14" />
+                    <circle cx="167.5" cy="130" r="0.8" fill="white" opacity="0.8" />
+                    <path d="M 228 128 Q 235 122 242 128" stroke="#1a1a2e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    <circle cx="235" cy="132" r="4.5" fill="#1a1a2e" />
+                    <circle cx="236" cy="131" r="1.8" fill="#0a0a14" />
+                    <circle cx="237.5" cy="130" r="0.8" fill="white" opacity="0.8" />
+                    <path d="M 155 120 Q 165 114 175 118" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+                    <path d="M 225 118 Q 235 114 245 120" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+                    <path d="M 198 142 Q 200 152 202 142" stroke="#d4a88a" strokeWidth="1.2" fill="none" />
+                    <ellipse cx="155" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
+                    <ellipse cx="245" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
+                    <path d="M 190 172 Q 200 178 210 172" stroke="#c0392b" strokeWidth="2" fill="none" strokeLinecap="round" />
+                    <path d="M 192 171 Q 200 168 208 171" stroke="#e74c3c" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  </svg>
+                </div>
+
+                {/* Floating status badges */}
+                <motion.div
+                  className="absolute -left-4 top-1/4 flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/20 px-3 py-1.5"
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-xs text-emerald-300 font-medium">Online</span>
+                </motion.div>
+
+                <motion.div
+                  className="absolute -right-4 bottom-1/3 flex items-center gap-2 rounded-lg bg-purple-500/15 border border-purple-500/20 px-3 py-1.5"
+                  animate={{ y: [0, 5, 0] }}
+                  transition={{ duration: 3.5, repeat: Infinity, delay: 0.5 }}
+                >
+                  <span className="text-xs text-purple-300 font-medium">🎙️ Voice AI</span>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Mode Selection */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <h2 className="text-lg font-semibold text-white text-center mb-4">Choose your practice mode</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 max-w-3xl mx-auto">
+                {MODES.map((mode, i) => (
+                  <motion.button
+                    key={mode.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + i * 0.08 }}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setSelectedMode(mode.id)}
+                    className={cn(
+                      'relative rounded-2xl p-5 text-left transition-all border group',
+                      selectedMode === mode.id
+                        ? 'bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border-indigo-500/40 shadow-lg shadow-indigo-500/10'
+                        : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20'
+                    )}
+                  >
+                    <div className="text-3xl mb-3">{mode.icon}</div>
+                    <div className="text-sm font-semibold text-white mb-1">{mode.label}</div>
+                    <div className="text-xs text-zinc-400 leading-relaxed">{mode.description}</div>
+                    {selectedMode === mode.id && (
+                      <motion.div
+                        layoutId="mode-indicator"
+                        className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-400"
+                      />
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Upload + Start */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="max-w-3xl mx-auto"
+            >
+              {showUpload && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-6">
+                  <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx" onChange={handleFileUpload} className="hidden" />
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Upload className="h-5 w-5 text-indigo-400" />
+                        <h3 className="text-white font-medium">Upload Resume (Optional)</h3>
+                      </div>
+                      <p className="text-zinc-400 text-sm mb-4">
+                        Get personalized questions based on your resume or target job description.
+                      </p>
+                      {uploadedFile ? (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                            <FileText className="h-4 w-4 text-emerald-400" />
+                            <span className="text-sm text-emerald-300">{uploadedFile.name}</span>
+                          </div>
+                          <button onClick={() => { setUploadedFile(null); setFileContent('') }} className="text-zinc-400 hover:text-red-400 transition">
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => fileInputRef.current?.click()}
+                          className="rounded-xl bg-white/[0.06] px-5 py-2.5 text-sm text-zinc-300 hover:bg-white/10 border border-white/10 transition flex items-center gap-2">
+                          <Upload className="h-4 w-4" /> Choose file
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(139,92,246,0.3)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={startInterviewFlow}
+                className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-4 text-base font-semibold text-white shadow-xl shadow-purple-600/20 flex items-center justify-center gap-3"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeLinecap="round" />
+                  <line x1="12" x2="12" y1="19" y2="22" strokeLinecap="round" />
+                </svg>
+                Start Interview with Aria
+              </motion.button>
+
+              <p className="text-center text-xs text-zinc-500 mt-3">
+                Best experienced in Chrome with microphone enabled
+              </p>
+            </motion.div>
+          </div>
         )}
 
         {/* Video Call + Sidebar */}
@@ -518,7 +697,7 @@ export default function VoiceAIPage() {
                 onToggleMic={() => setMicOn(!micOn)}
                 onEndCall={endInterview}
                 isMicOn={micOn}
-                aiName="AI Interviewer"
+                aiName="Aria"
                 aiSubtitle={getAiSubtitle()}
               >
                 {/* Floating controls overlay */}

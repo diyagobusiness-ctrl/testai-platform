@@ -57,16 +57,51 @@ export default function useSpeechSynthesis(
       utterance.pitch = pitch
       utterance.volume = volume
 
-      const englishVoice =
-        voices.find(
+      // Prioritize Alexa-style female voices
+      const femaleVoicePriority = [
+        'Google UK English Female',
+        'Google US English',
+        'Samantha',
+        'Victoria',
+        'Karen',
+        'Moira',
+        'Tessa',
+        'Google Deutsch',
+        'Microsoft Zira',
+        'Microsoft Hazel',
+      ]
+
+      let selectedVoice: SpeechSynthesisVoice | undefined
+
+      // Try to find a preferred female voice
+      for (const preferred of femaleVoicePriority) {
+        selectedVoice = voices.find((v) => v.name.includes(preferred))
+        if (selectedVoice) break
+      }
+
+      // Fallback: find any English female voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(
           (v) =>
             v.lang.startsWith('en') &&
-            (v.name.includes('Google') || v.name.includes('Samantha'))
-        ) || voices.find((v) => v.lang.startsWith('en'))
-
-      if (englishVoice) {
-        utterance.voice = englishVoice
+            (v.name.toLowerCase().includes('female') ||
+              v.name.toLowerCase().includes('samantha') ||
+              v.name.toLowerCase().includes('victoria') ||
+              v.name.toLowerCase().includes('zira'))
+        )
       }
+
+      // Last resort: any English voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find((v) => v.lang.startsWith('en'))
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice
+      }
+
+      // Slightly higher pitch for feminine tone
+      utterance.pitch = pitch > 1.0 ? pitch : 1.1
 
       utterance.onstart = () => setIsSpeaking(true)
       utterance.onend = () => {
