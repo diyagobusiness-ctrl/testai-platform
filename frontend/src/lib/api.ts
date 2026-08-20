@@ -182,6 +182,14 @@ class ApiClient {
     return this.post(`/api/tenant/students/${id}/suspend`)
   }
 
+  async reactivateStudent(id: string) {
+    return this.post(`/api/tenant/students/${id}/reactivate`)
+  }
+
+  async updateStudentCredits(id: string, data: { totalCredits?: number; currentCredits?: number }) {
+    return this.put(`/api/tenant/students/${id}/credits`, data)
+  }
+
   // Student methods
   async getDashboard() {
     return this.get('/api/student/dashboard')

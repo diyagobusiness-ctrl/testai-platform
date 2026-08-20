@@ -7,7 +7,6 @@ import { CardHover } from '@/components/animations/CardHover'
 import { api } from '@/lib/api'
 import {
   Search,
-  Plus,
   Users,
   Filter,
   ChevronLeft,
@@ -15,11 +14,13 @@ import {
   X,
   CheckCircle,
   XCircle,
-  Clock,
   Trash2,
   Upload,
-  Mail,
   UserPlus,
+  Coins,
+  Pencil,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react'
 
 interface Student {
@@ -51,6 +52,11 @@ export default function StudentsPage() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createForm, setCreateForm] = useState({ email: '', firstName: '', lastName: '' })
   const [tempPassword, setTempPassword] = useState<string | null>(null)
+
+  // Credits modal
+  const [creditsModal, setCreditsModal] = useState<{ open: boolean; student: Student | null }>({ open: false, student: null })
+  const [creditsForm, setCreditsForm] = useState({ totalCredits: 0, currentCredits: 0 })
+  const [creditsLoading, setCreditsLoading] = useState(false)
 
   const fetchStudents = useCallback(async (page = 1) => {
     setLoading(true)
@@ -95,6 +101,40 @@ export default function StudentsPage() {
       fetchStudents(pagination.page)
     } catch (err) {
       console.error('Failed to suspend student:', err)
+    }
+  }
+
+  const handleReactivateStudent = async (id: string) => {
+    try {
+      await api.reactivateStudent(id)
+      fetchStudents(pagination.page)
+    } catch (err) {
+      console.error('Failed to reactivate student:', err)
+    }
+  }
+
+  const openCreditsModal = (student: Student) => {
+    setCreditsForm({
+      totalCredits: student.total_credits,
+      currentCredits: student.current_credits,
+    })
+    setCreditsModal({ open: true, student })
+  }
+
+  const handleUpdateCredits = async () => {
+    if (!creditsModal.student) return
+    setCreditsLoading(true)
+    try {
+      await api.updateStudentCredits(creditsModal.student.id, {
+        totalCredits: creditsForm.totalCredits,
+        currentCredits: creditsForm.currentCredits,
+      })
+      setCreditsModal({ open: false, student: null })
+      fetchStudents(pagination.page)
+    } catch (err) {
+      console.error('Failed to update credits:', err)
+    } finally {
+      setCreditsLoading(false)
     }
   }
 
@@ -211,8 +251,16 @@ export default function StudentsPage() {
                           </td>
                           <td className="px-6 py-4 text-sm text-muted-foreground">{student.email}</td>
                           <td className="px-6 py-4">
-                            <span className="font-medium">{student.current_credits}</span>
-                            <span className="text-muted-foreground"> / {student.total_credits}</span>
+                            <button
+                              onClick={() => openCreditsModal(student)}
+                              className="group flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-muted/50"
+                              title="Edit credits"
+                            >
+                              <Coins className="h-3.5 w-3.5 text-yellow-500" />
+                              <span className="font-medium">{student.current_credits}</span>
+                              <span className="text-muted-foreground">/ {student.total_credits}</span>
+                              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                            </button>
                           </td>
                           <td className="px-6 py-4">
                             <span className={cn(
@@ -228,15 +276,27 @@ export default function StudentsPage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              {student.is_active && (
+                              {student.is_active ? (
                                 <motion.button
-                                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
+                                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-500/10"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
                                   onClick={() => handleSuspendStudent(student.id)}
                                   title="Suspend"
                                 >
-                                  <XCircle className="h-4 w-4" />
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Suspend
+                                </motion.button>
+                              ) : (
+                                <motion.button
+                                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-green-500 hover:bg-green-500/10"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleReactivateStudent(student.id)}
+                                  title="Reactivate"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  Activate
                                 </motion.button>
                               )}
                             </div>
@@ -297,6 +357,110 @@ export default function StudentsPage() {
           )}
         </div>
       </CardHover>
+
+      {/* Credits Modal */}
+      <AnimatePresence>
+        {creditsModal.open && creditsModal.student && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setCreditsModal({ open: false, student: null })}
+            />
+            <motion.div
+              className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-500/10">
+                    <Coins className="h-5 w-5 text-yellow-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">Edit Credits</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {creditsModal.student.first_name} {creditsModal.student.last_name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCreditsModal({ open: false, student: null })}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Total Credits (Monthly Allowance)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={creditsForm.totalCredits}
+                    onChange={(e) => setCreditsForm({ ...creditsForm, totalCredits: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Maximum credits this student can use per month.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Current Credits (Available Now)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={creditsForm.totalCredits}
+                    value={creditsForm.currentCredits}
+                    onChange={(e) => setCreditsForm({ ...creditsForm, currentCredits: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Credits remaining right now. Set to 0 to block the student.
+                  </p>
+                </div>
+
+                {creditsForm.currentCredits === 0 && (
+                  <div className="flex items gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-yellow-500">
+                      Setting current credits to 0 will prevent the student from using paid features. They will need to contact the tenant admin to get more credits.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6">
+                <motion.button
+                  type="button"
+                  className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCreditsModal({ open: false, student: null })}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  disabled={creditsLoading}
+                  className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleUpdateCredits}
+                >
+                  {creditsLoading ? 'Saving...' : 'Save Credits'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Create Student Modal */}
       <AnimatePresence>

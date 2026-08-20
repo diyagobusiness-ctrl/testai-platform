@@ -281,6 +281,66 @@ router.post('/students/:id/suspend', async (req, res) => {
   }
 })
 
+router.post('/students/:id/reactivate', async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const result = await pool.query(
+      `UPDATE students 
+       SET is_active = true, suspended_at = NULL
+       WHERE id = $1 AND tenant_id = $2
+       RETURNING *`,
+      [id, req.user?.tenantId]
+    )
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('Student not found')
+    }
+
+    await pool.query(
+      'UPDATE tenants SET current_students_count = current_students_count + 1 WHERE id = $1',
+      [req.user?.tenantId]
+    )
+
+    res.json({
+      success: true,
+      student: result.rows[0],
+    })
+  } catch (error) {
+    logger.error('Reactivate student error:', error)
+    throw error
+  }
+})
+
+router.put('/students/:id/credits', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { totalCredits, currentCredits } = req.body
+
+    const result = await pool.query(
+      `UPDATE students 
+       SET total_credits = COALESCE($1, total_credits),
+           current_credits = COALESCE($2, current_credits),
+           updated_at = NOW()
+       WHERE id = $3 AND tenant_id = $4
+       RETURNING *`,
+      [totalCredits, currentCredits, id, req.user?.tenantId]
+    )
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('Student not found')
+    }
+
+    res.json({
+      success: true,
+      student: result.rows[0],
+    })
+  } catch (error) {
+    logger.error('Update student credits error:', error)
+    throw error
+  }
+})
+
 // Dashboard stats
 router.get('/dashboard/stats', async (req, res) => {
   try {
