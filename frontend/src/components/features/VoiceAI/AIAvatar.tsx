@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 
@@ -12,112 +12,137 @@ interface AIAvatarProps {
   className?: string
 }
 
-function BlinkAnimation({ isSpeaking }: { isSpeaking: boolean }) {
-  const [blink, setBlink] = useState(false)
-
-  useEffect(() => {
-    if (isSpeaking) return
-    const interval = setInterval(() => {
-      setBlink(true)
-      setTimeout(() => setBlink(false), 150)
-    }, 2800 + Math.random() * 2000)
-    return () => clearInterval(interval)
-  }, [isSpeaking])
+function OrbParticles({ color }: { color: string }) {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        id: i,
+        angle: (i / 12) * Math.PI * 2,
+        delay: i * 0.15,
+        size: 2 + Math.random() * 3,
+      })),
+    []
+  )
 
   return (
-    <g>
-      {/* Left eye - with eyelashes */}
-      <path
-        d="M 158 128 Q 165 122 172 128"
-        stroke="#1a1a2e"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <ellipse
-        cx="165"
-        cy="132"
-        rx="4.5"
-        ry={blink ? 0.5 : 4.5}
-        fill="#1a1a2e"
-        style={{ transition: 'ry 0.08s ease' }}
-      />
-      {!blink && (
-        <>
-          <circle cx="166" cy="131" r="1.8" fill="#0a0a14" />
-          <circle cx="167.5" cy="130" r="0.8" fill="white" opacity="0.8" />
-        </>
-      )}
-
-      {/* Right eye - with eyelashes */}
-      <path
-        d="M 228 128 Q 235 122 242 128"
-        stroke="#1a1a2e"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <ellipse
-        cx="235"
-        cy="132"
-        rx="4.5"
-        ry={blink ? 0.5 : 4.5}
-        fill="#1a1a2e"
-        style={{ transition: 'ry 0.08s ease' }}
-      />
-      {!blink && (
-        <>
-          <circle cx="236" cy="131" r="1.8" fill="#0a0a14" />
-          <circle cx="237.5" cy="130" r="0.8" fill="white" opacity="0.8" />
-        </>
-      )}
-
-      {/* Eyebrows - arched */}
-      <path d="M 155 120 Q 165 114 175 118" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-      <path d="M 225 118 Q 235 114 245 120" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-    </g>
+    <>
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            width: p.size,
+            height: p.size,
+            background: color,
+            left: `${50 + Math.cos(p.angle) * 38}%`,
+            top: `${50 + Math.sin(p.angle) * 38}%`,
+          }}
+          animate={{
+            opacity: [0, 0.6, 0],
+            scale: [0.5, 1.2, 0.5],
+            x: [0, Math.cos(p.angle) * 15, 0],
+            y: [0, Math.sin(p.angle) * 15, 0],
+          }}
+          transition={{
+            duration: 2.5,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </>
   )
 }
 
-function MouthAnimation({ isSpeaking }: { isSpeaking: boolean }) {
-  const [mouthOpen, setMouthOpen] = useState(0)
-
-  useEffect(() => {
-    if (!isSpeaking) {
-      setMouthOpen(0)
-      return
-    }
-    const interval = setInterval(() => {
-      setMouthOpen(Math.random() * 5 + 1)
-    }, 130)
-    return () => clearInterval(interval)
-  }, [isSpeaking])
+function WaveformRings({ isSpeaking, isListening }: { isSpeaking: boolean; isListening: boolean }) {
+  const ringCount = 5
 
   return (
-    <g>
-      {/* Lips */}
-      <path
-        d={isSpeaking
-          ? `M 188 ${172 + mouthOpen} Q 200 ${176 + mouthOpen * 1.8} 212 ${172 + mouthOpen}`
-          : 'M 190 172 Q 200 178 210 172'
-        }
-        fill={isSpeaking ? '#c0392b' : 'none'}
-        stroke="#c0392b"
-        strokeWidth="2"
-        strokeLinecap="round"
-        style={{ transition: 'all 0.08s ease' }}
-      />
-      {/* Upper lip highlight */}
-      {!isSpeaking && (
-        <path
-          d="M 192 171 Q 200 168 208 171"
-          stroke="#e74c3c"
-          strokeWidth="1.2"
-          fill="none"
-          strokeLinecap="round"
-        />
-      )}
-    </g>
+    <>
+      {Array.from({ length: ringCount }, (_, i) => {
+        const delay = i * 0.2
+        const baseScale = 1 + i * 0.15
+
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full border"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: `${100 + i * 20}%`,
+              height: `${100 + i * 20}%`,
+              marginLeft: `-${(100 + i * 20) / 2}%`,
+              marginTop: `-${(100 + i * 20) / 2}%`,
+              borderColor: isSpeaking
+                ? `rgba(168, 85, 247, ${0.25 - i * 0.04})`
+                : isListening
+                  ? `rgba(52, 211, 153, ${0.2 - i * 0.03})`
+                  : `rgba(99, 102, 241, ${0.1 - i * 0.015})`,
+            }}
+            animate={
+              isSpeaking
+                ? {
+                    scale: [baseScale, baseScale + 0.08, baseScale],
+                    opacity: [0.4, 0.7, 0.4],
+                  }
+                : isListening
+                  ? {
+                      scale: [baseScale, baseScale + 0.04, baseScale],
+                      opacity: [0.25, 0.5, 0.25],
+                    }
+                  : {
+                      scale: [baseScale, baseScale + 0.02, baseScale],
+                      opacity: [0.1, 0.2, 0.1],
+                    }
+            }
+            transition={{
+              duration: isSpeaking ? 1.2 : isListening ? 1.8 : 3,
+              repeat: Infinity,
+              delay,
+              ease: 'easeInOut',
+            }}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+function AudioBars({ isSpeaking }: { isSpeaking: boolean }) {
+  const barCount = 24
+
+  return (
+    <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 flex items-end gap-[3px] h-6">
+      {Array.from({ length: barCount }, (_, i) => {
+        const centerDist = Math.abs(i - barCount / 2) / (barCount / 2)
+        const maxHeight = isSpeaking ? (1 - centerDist * 0.6) * 20 : 3
+
+        return (
+          <motion.div
+            key={i}
+            className="w-[2px] rounded-full"
+            style={{
+              background: isSpeaking
+                ? 'linear-gradient(to top, #a855f7, #6366f1)'
+                : 'rgba(99, 102, 241, 0.3)',
+            }}
+            animate={{
+              height: isSpeaking
+                ? [3, maxHeight, 2, maxHeight * 0.8, 3]
+                : 3,
+            }}
+            transition={{
+              duration: 0.5 + Math.random() * 0.3,
+              repeat: isSpeaking ? Infinity : 0,
+              delay: i * 0.03,
+              ease: 'easeInOut',
+            }}
+          />
+        )
+      })}
+    </div>
   )
 }
 
@@ -128,239 +153,145 @@ export default function AIAvatar({
   subtitle = 'AI Interview Coach',
   className,
 }: AIAvatarProps) {
-  const [breathOffset, setBreathOffset] = useState(0)
-  const [hairSway, setHairSway] = useState(0)
+  const [pulse, setPulse] = useState(0)
 
   useEffect(() => {
     let frame: number
     const animate = () => {
-      setBreathOffset(Math.sin(Date.now() * 0.0018) * 1.2)
-      setHairSway(Math.sin(Date.now() * 0.001) * 2)
+      setPulse(Math.sin(Date.now() * 0.003) * 0.5 + 0.5)
       frame = requestAnimationFrame(animate)
     }
     frame = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(frame)
   }, [])
 
+  const orbColor = isSpeaking
+    ? 'from-purple-500 via-violet-500 to-indigo-500'
+    : isListening
+      ? 'from-emerald-400 via-teal-400 to-cyan-400'
+      : 'from-indigo-500 via-purple-500 to-violet-500'
+
+  const glowColor = isSpeaking
+    ? 'rgba(168, 85, 247, 0.4)'
+    : isListening
+      ? 'rgba(52, 211, 153, 0.35)'
+      : 'rgba(99, 102, 241, 0.25)'
+
+  const particleColor = isSpeaking
+    ? '#c084fc'
+    : isListening
+      ? '#6ee7b7'
+      : '#818cf8'
+
   return (
     <div className={cn('relative w-full h-full flex items-center justify-center overflow-hidden', className)}>
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-zinc-900 to-purple-950" />
+      <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
 
-      {/* Animated gradient orbs */}
+      {/* Ambient glow */}
       <motion.div
-        className="absolute w-96 h-96 rounded-full opacity-20"
-        style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }}
-        animate={{ x: [0, 30, 0], y: [0, -20, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute w-80 h-80 rounded-full opacity-15"
-        style={{ background: 'radial-gradient(circle, #a855f7 0%, transparent 70%)', left: '60%', top: '20%' }}
-        animate={{ x: [0, -20, 0], y: [0, 30, 0], scale: [1, 1.15, 1] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
+        }}
+        animate={{
+          scale: [1, 1.15, 1],
+          opacity: [0.5, 0.8, 0.5],
+        }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(8)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full"
-            style={{
-              background: i % 2 === 0 ? '#818cf8' : '#c084fc',
-              left: `${10 + i * 12}%`,
-              top: `${15 + (i % 4) * 20}%`,
-            }}
-            animate={{
-              y: [0, -25, 0],
-              opacity: [0.15, 0.4, 0.15],
-            }}
-            transition={{
-              duration: 3.5 + i * 0.6,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: i * 0.3,
-            }}
-          />
-        ))}
+      {/* Waveform rings */}
+      <div className="absolute w-72 h-72 md:w-80 md:h-80">
+        <WaveformRings isSpeaking={isSpeaking} isListening={isListening} />
       </div>
 
-      {/* Speaking pulse rings */}
-      <AnimatePresence>
-        {isSpeaking && (
-          <>
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: [1, 1.2, 1], opacity: [0.25, 0.08, 0.25] }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 1.8, repeat: Infinity }}
-              className="absolute w-72 h-72 rounded-full border-2 border-purple-400/30"
-            />
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: [1, 1.35, 1], opacity: [0.15, 0.03, 0.15] }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 1.8, repeat: Infinity, delay: 0.4 }}
-              className="absolute w-80 h-80 rounded-full border border-indigo-400/20"
-            />
-          </>
-        )}
-      </AnimatePresence>
+      {/* Particles */}
+      <div className="absolute w-72 h-72 md:w-80 md:h-80">
+        <OrbParticles color={particleColor} />
+      </div>
 
-      {/* Listening waveform ring */}
-      <AnimatePresence>
-        {isListening && (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: [0.95, 1.05, 0.95], opacity: [0.3, 0.1, 0.3] }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 1.2, repeat: Infinity }}
-            className="absolute w-64 h-64 rounded-full border-2 border-emerald-400/30"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Avatar SVG */}
-      <motion.svg
-        viewBox="0 0 400 420"
-        className="relative z-10 w-60 h-60 md:w-72 md:h-72"
-        animate={{ y: breathOffset }}
-        transition={{ duration: 0.1 }}
+      {/* Main orb */}
+      <motion.div
+        className="relative z-10"
+        animate={{
+          scale: isSpeaking ? [1, 1.04, 1] : isListening ? [1, 1.02, 1] : 1,
+        }}
+        transition={{
+          duration: isSpeaking ? 0.8 : isListening ? 1.5 : 2,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
       >
-        <defs>
-          <radialGradient id="femaleFaceGrad" cx="50%" cy="35%" r="55%">
-            <stop offset="0%" stopColor="#fde8d8" />
-            <stop offset="60%" stopColor="#f5d0b0" />
-            <stop offset="100%" stopColor="#e8b898" />
-          </radialGradient>
-          <linearGradient id="blazerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#1e1b4b" />
-            <stop offset="100%" stopColor="#0f0a2e" />
-          </linearGradient>
-          <linearGradient id="hairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#1a1a2e" />
-            <stop offset="50%" stopColor="#2d2d44" />
-            <stop offset="100%" stopColor="#1a1a2e" />
-          </linearGradient>
-          <linearGradient id="lipGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#e74c3c" />
-            <stop offset="100%" stopColor="#c0392b" />
-          </linearGradient>
-        </defs>
+        <div className="relative w-40 h-40 md:w-48 md:h-48">
+          {/* Outer glow */}
+          <div
+            className="absolute inset-0 rounded-full blur-2xl"
+            style={{ background: glowColor, opacity: 0.4 + pulse * 0.2 }}
+          />
 
-        {/* Glow behind */}
-        <circle cx="200" cy="180" r="160" fill="url(#femaleFaceGrad)" opacity="0.08" />
+          {/* Orb body */}
+          <div
+            className={cn(
+              'absolute inset-2 rounded-full bg-gradient-to-br',
+              orbColor,
+              'shadow-2xl'
+            )}
+            style={{
+              boxShadow: `0 0 60px ${glowColor}, 0 0 120px ${glowColor}`,
+            }}
+          />
 
-        {/* Body / Blazer */}
-        <path
-          d="M 115 340 Q 115 300 155 275 L 175 262 L 200 254 L 225 262 L 245 275 Q 285 300 285 340 L 285 420 L 115 420 Z"
-          fill="url(#blazerGrad)"
-        />
-        {/* Blazer lapels */}
-        <path
-          d="M 175 262 L 185 285 L 200 278"
-          stroke="#312e81"
-          strokeWidth="1.5"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 225 262 L 215 285 L 200 278"
-          stroke="#312e81"
-          strokeWidth="1.5"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {/* Blouse */}
-        <path
-          d="M 185 262 L 195 278 L 200 275 L 205 278 L 215 262"
-          fill="#e8e0f0"
-        />
-        {/* Necklace */}
-        <circle cx="200" cy="278" r="3" fill="#a78bfa" />
-        <path d="M 192 275 Q 200 282 208 275" stroke="#a78bfa" strokeWidth="0.8" fill="none" />
+          {/* Inner highlight */}
+          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-white/25 via-transparent to-transparent" />
 
-        {/* Neck */}
-        <rect x="187" y="235" width="26" height="28" rx="6" fill="#e8b898" />
+          {/* Core light */}
+          <div
+            className="absolute rounded-full bg-white/40 blur-sm"
+            style={{
+              width: 30 + pulse * 8,
+              height: 30 + pulse * 8,
+              left: '50%',
+              top: '35%',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
 
-        {/* Hair behind head */}
-        <ellipse cx="200" cy="145" rx="82" ry="90" fill="url(#hairGrad)" />
+          {/* Specular highlight */}
+          <div className="absolute w-8 h-4 rounded-full bg-white/30 blur-sm" style={{ left: '35%', top: '28%' }} />
 
-        {/* Head */}
-        <ellipse cx="200" cy="152" rx="68" ry="78" fill="url(#femaleFaceGrad)" />
+          {/* Rotating ring */}
+          <motion.div
+            className="absolute inset-[-8px] rounded-full border border-white/10"
+            style={{ borderStyle: 'dashed', borderWidth: 1 }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          />
+        </div>
+      </motion.div>
 
-        {/* Hair - flowing style with volume */}
-        <path
-          d="M 132 148 Q 128 70 200 58 Q 272 70 268 148
-             Q 265 105 240 90 Q 210 75 170 85 Q 140 95 132 148 Z"
-          fill="url(#hairGrad)"
-        />
-        {/* Hair strands - left side flowing */}
-        <path
-          d="M 132 148 Q 125 175 120 220 Q 118 240 125 260"
-          stroke="#2d2d44"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
-          style={{ transform: `translateX(${hairSway * 0.3}px)` }}
-        />
-        {/* Hair strands - right side flowing */}
-        <path
-          d="M 268 148 Q 275 175 280 220 Q 282 240 275 260"
-          stroke="#2d2d44"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
-          style={{ transform: `translateX(${-hairSway * 0.3}px)` }}
-        />
-        {/* Hair highlight */}
-        <path
-          d="M 160 70 Q 180 62 200 60 Q 210 60 215 62"
-          stroke="#4a4a6a"
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-          opacity="0.5"
-        />
-
-        {/* Earrings */}
-        <circle cx="132" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
-        <circle cx="132" cy="163" r="2" fill="#c4b5fd" opacity="0.7" />
-        <circle cx="268" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
-        <circle cx="268" cy="163" r="2" fill="#c4b5fd" opacity="0.7" />
-
-        {/* Eyes */}
-        <BlinkAnimation isSpeaking={isSpeaking} />
-
-        {/* Nose */}
-        <path d="M 198 142 Q 200 152 202 142" stroke="#d4a88a" strokeWidth="1.2" fill="none" />
-
-        {/* Cheek blush */}
-        <ellipse cx="155" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
-        <ellipse cx="245" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
-
-        {/* Mouth */}
-        <MouthAnimation isSpeaking={isSpeaking} />
-      </motion.svg>
+      {/* Audio bars */}
+      <div className="absolute w-64 md:w-72 z-10">
+        <AudioBars isSpeaking={isSpeaking} />
+      </div>
 
       {/* Status label */}
       <div className="absolute bottom-5 left-0 right-0 text-center z-10">
         <div className="flex items-center justify-center gap-2 mb-1">
-          {isSpeaking && (
-            <motion.div
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-purple-400"
-            />
-          )}
-          {isListening && (
-            <motion.div
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-emerald-400"
-            />
-          )}
+          <motion.div
+            animate={
+              isSpeaking
+                ? { scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }
+                : isListening
+                  ? { scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }
+                  : { opacity: 0.5 }
+            }
+            transition={{ duration: 1, repeat: Infinity }}
+            className={cn(
+              'w-2 h-2 rounded-full',
+              isSpeaking ? 'bg-purple-400' : isListening ? 'bg-emerald-400' : 'bg-indigo-400'
+            )}
+          />
           <span className="text-sm font-semibold text-zinc-100 tracking-wide">{name}</span>
         </div>
         <p className="text-xs text-zinc-400">

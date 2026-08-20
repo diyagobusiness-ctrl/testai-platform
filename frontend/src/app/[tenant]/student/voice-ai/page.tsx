@@ -169,6 +169,15 @@ export default function VoiceAIPage() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(Date.now())
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  const questionsRef = useRef(questions)
+  questionsRef.current = questions
+  const currentIdxRef = useRef(currentIdx)
+  currentIdxRef.current = currentIdx
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
 
   const addMessage = useCallback((role: 'interviewer' | 'candidate', text: string, score?: number) => {
     const msg: ChatMessage = {
@@ -221,32 +230,65 @@ export default function VoiceAIPage() {
   const currentQuestion = questions[currentIdx]
   const progress = questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0
 
-  const askQuestion = useCallback((question: InterviewQuestion) => {
-    setPhase('asking')
+  const clearSafety = useCallback(() => {
+    if (safetyTimeoutRef.current) {
+      clearTimeout(safetyTimeoutRef.current)
+      safetyTimeoutRef.current = null
+    }
+  }, [])
+
+  const setPhaseSafe = useCallback((newPhase: typeof phase, delayMs?: number) => {
+    clearSafety()
+    const doSet = () => {
+      setPhase(newPhase)
+      // Safety: if phase doesn't transition within 15s, force it
+      safetyTimeoutRef.current = setTimeout(() => {
+        const cur = phaseRef.current
+        if (cur === 'asking' || cur === 'greeting') {
+          setPhase('listening')
+          resetTranscript()
+          startListening()
+        } else if (cur === 'ai-responding') {
+          setPhase('idle')
+        }
+      }, 15000)
+    }
+    if (delayMs) {
+      setTimeout(doSet, delayMs)
+    } else {
+      doSet()
+    }
+  }, [clearSafety, resetTranscript, startListening])
+
+  const askQuestionFn = useCallback((question: InterviewQuestion) => {
+    setPhaseSafe('asking')
     addMessage('interviewer', question.text)
     speak(question.text)
-  }, [speak, addMessage])
+  }, [speak, addMessage, setPhaseSafe])
 
-  const moveToNext = useCallback(() => {
-    const next = currentIdx + 1
-    if (next >= questions.length) {
-      endInterview()
+  const moveToNextFn = useCallback(() => {
+    const next = currentIdxRef.current + 1
+    const qs = questionsRef.current
+    if (next >= qs.length) {
+      endInterviewFn()
     } else {
       setCurrentIdx(next)
       resetTranscript()
       setTimeout(() => {
-        askQuestion(questions[next])
+        askQuestionFn(qs[next])
       }, 1500)
     }
-  }, [currentIdx, questions, askQuestion, resetTranscript])
+  }, [askQuestionFn, resetTranscript])
 
-  const processAnswer = useCallback((answer: string) => {
-    if (!currentQuestion) return
+  const processAnswerFn = useCallback((answer: string) => {
+    const q = questionsRef.current[currentIdxRef.current]
+    if (!q) return
 
     addMessage('candidate', answer)
+    clearSafety()
 
-    const analysis = analyzeAnswer(answer, currentQuestion)
-    setPhase('ai-responding')
+    const analysis = analyzeAnswer(answer, q)
+    setPhaseSafe('ai-responding')
 
     const responseText = analysis.followUp
       ? `${analysis.feedback}\n\n${analysis.followUp}`
@@ -259,14 +301,39 @@ export default function VoiceAIPage() {
       resetTranscript()
       if (analysis.followUp) {
         setTimeout(() => {
-          setPhase('listening')
+          setPhaseSafe('listening')
           startListening()
         }, 1000)
       } else {
-        moveToNext()
+        moveToNextFn()
       }
     }, 500)
-  }, [currentQuestion, speak, addMessage, resetTranscript, startListening, moveToNext])
+  }, [speak, addMessage, clearSafety, resetTranscript, startListening, moveToNextFn, setPhaseSafe])
+
+  const endInterviewFn = useCallback(() => {
+    stopListening()
+    stopSpeaking()
+    clearSafety()
+    window.speechSynthesis?.cancel()
+    setInterviewStarted(false)
+    setPhase('idle')
+
+    if (timerRef.current) clearInterval(timerRef.current)
+
+    const msgs = messagesRef.current
+    const scores = msgs.filter((m) => m.score).map((m) => m.score!)
+    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 70
+    setOverallScore(Math.round(avg))
+    setShowFeedback(true)
+
+    api.submitVoiceSession({
+      sessionType: selectedMode,
+      durationSeconds: Math.floor((Date.now() - startTimeRef.current) / 1000),
+      accuracyScore: Math.round(avg),
+      transcribedText: msgs.map((m) => `${m.role}: ${m.text}`).join('\n'),
+      aiFeedback: `Score: ${Math.round(avg)}/100. ${msgs.length} messages exchanged.`,
+    }).catch(() => {})
+  }, [stopListening, stopSpeaking, clearSafety, selectedMode])
 
   const startInterviewFlow = useCallback(() => {
     let qs = [...SMART_QUESTIONS[selectedMode]]
@@ -289,86 +356,84 @@ export default function VoiceAIPage() {
     setMessages([])
     setInterviewStarted(true)
     setShowUpload(false)
-    setPhase('greeting')
     startTimeRef.current = Date.now()
 
     const greeting = `Hi there! I'm Aria, your AI interview coach. ${fileContent ? "I've taken a look at your resume and I'm excited to dive in!" : `I'll be your interviewer for this ${MODES.find((m) => m.id === selectedMode)?.label} session.`} Don't worry, this is a safe space to practice. Take your time with each answer, and I'll give you feedback along the way. Ready? Let's get started!`
 
+    setPhaseSafe('greeting')
     addMessage('interviewer', greeting)
     speak(greeting)
-  }, [selectedMode, fileContent, speak, addMessage])
+  }, [selectedMode, fileContent, speak, addMessage, setPhaseSafe])
 
+  // When greeting finishes, auto-ask first question
+  useEffect(() => {
+    if (phase === 'greeting' && !isSpeaking) {
+      setTimeout(() => {
+        if (questionsRef.current[0]) {
+          askQuestionFn(questionsRef.current[0])
+        }
+      }, 1000)
+    }
+  }, [phase, isSpeaking, askQuestionFn])
+
+  // When asking finishes (AI stopped talking), start listening
   useEffect(() => {
     if (phase === 'asking' && !isSpeaking) {
       setTimeout(() => {
-        setPhase('listening')
+        setPhaseSafe('listening')
         resetTranscript()
         startListening()
-      }, 800)
+      }, 600)
     }
-  }, [phase, isSpeaking, startListening, resetTranscript])
+  }, [phase, isSpeaking, startListening, resetTranscript, setPhaseSafe])
 
+  // When idle after an answer, process it
   useEffect(() => {
     if (phase === 'idle' && interviewStarted && !isSpeaking && !isListening) {
-      if (transcript.trim()) {
-        processAnswer(transcript.trim())
-      }
+      const t = setTimeout(() => {
+        if (phaseRef.current === 'idle' && transcript.trim()) {
+          processAnswerFn(transcript.trim())
+        }
+      }, 300)
+      return () => clearTimeout(t)
     }
-  }, [phase, interviewStarted, isSpeaking, isListening, transcript, processAnswer])
+  }, [phase, interviewStarted, isSpeaking, isListening, transcript, processAnswerFn])
 
   const handleSubmitAnswer = useCallback(() => {
     stopListening()
+    clearSafety()
     const answer = segments.filter((s) => s.isFinal).map((s) => s.text).join(' ')
+    const fallback = transcript.trim()
+
     if (answer.trim()) {
-      processAnswer(answer.trim())
-    } else if (transcript.trim()) {
-      processAnswer(transcript.trim())
+      processAnswerFn(answer.trim())
+    } else if (fallback) {
+      processAnswerFn(fallback)
     } else {
       addMessage('candidate', '[No answer provided]')
-      setPhase('ai-responding')
+      setPhaseSafe('ai-responding')
       const skipMsg = "No worries at all! Let's move on to the next one."
       addMessage('interviewer', skipMsg)
       speak(skipMsg)
-      setTimeout(() => moveToNext(), 1500)
+      setTimeout(() => moveToNextFn(), 1500)
     }
-  }, [stopListening, segments, transcript, processAnswer, speak, addMessage, moveToNext])
+  }, [stopListening, clearSafety, segments, transcript, processAnswerFn, speak, addMessage, moveToNextFn, setPhaseSafe])
 
   const handleSkipQuestion = useCallback(() => {
     stopListening()
     stopSpeaking()
-    setPhase('ai-responding')
+    clearSafety()
+    setPhaseSafe('ai-responding')
     const msg = "No problem! Let's continue with the next question."
     addMessage('interviewer', msg)
     speak(msg)
-    setTimeout(() => moveToNext(), 1500)
-  }, [stopListening, stopSpeaking, speak, addMessage, moveToNext])
-
-  const endInterview = useCallback(() => {
-    stopListening()
-    stopSpeaking()
-    window.speechSynthesis?.cancel()
-    setInterviewStarted(false)
-    setPhase('idle')
-
-    if (timerRef.current) clearInterval(timerRef.current)
-
-    const scores = messages.filter((m) => m.score).map((m) => m.score!)
-    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 70
-    setOverallScore(Math.round(avg))
-    setShowFeedback(true)
-
-    api.submitVoiceSession({
-      sessionType: selectedMode,
-      durationSeconds: Math.floor((Date.now() - startTimeRef.current) / 1000),
-      accuracyScore: Math.round(avg),
-      transcribedText: messages.map((m) => `${m.role}: ${m.text}`).join('\n'),
-      aiFeedback: `Score: ${Math.round(avg)}/100. ${messages.length} messages exchanged.`,
-    }).catch(() => {})
-  }, [stopListening, stopSpeaking, messages, selectedMode])
+    setTimeout(() => moveToNextFn(), 1500)
+  }, [stopListening, stopSpeaking, clearSafety, speak, addMessage, moveToNextFn, setPhaseSafe])
 
   const resetInterview = useCallback(() => {
     stopListening()
     stopSpeaking()
+    clearSafety()
     window.speechSynthesis?.cancel()
     setInterviewStarted(false)
     setShowUpload(true)
@@ -383,20 +448,21 @@ export default function VoiceAIPage() {
     setPhase('idle')
     resetTranscript()
     if (timerRef.current) clearInterval(timerRef.current)
-  }, [stopListening, stopSpeaking, resetTranscript])
+  }, [stopListening, stopSpeaking, clearSafety, resetTranscript])
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setRemainingTime((p) => {
-        if (p <= 1) { endInterview(); return 0 }
+        if (p <= 1) { endInterviewFn(); return 0 }
         return p - 1
       })
     }, 1000)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      clearSafety()
       window.speechSynthesis?.cancel()
     }
-  }, [endInterview])
+  }, [endInterviewFn, clearSafety])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -488,82 +554,61 @@ export default function VoiceAIPage() {
                 </div>
               </motion.div>
 
-              {/* Right: Animated Avatar Preview */}
+              {/* Right: Animated Orb Preview */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
                 className="relative w-64 h-64 md:w-80 md:h-80"
               >
-                {/* Glowing orb behind avatar */}
+                {/* Ambient glow */}
                 <motion.div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.1) 50%, transparent 70%)',
+                    background: 'radial-gradient(circle, rgba(139,92,246,0.35) 0%, rgba(99,102,241,0.12) 50%, transparent 70%)',
                   }}
-                  animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                 />
 
-                {/* Animated rings */}
-                <motion.div
-                  className="absolute inset-4 rounded-full border border-purple-400/20"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                />
-                <motion.div
-                  className="absolute inset-8 rounded-full border border-indigo-400/15"
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-                />
+                {/* Concentric rings */}
+                {[0, 1, 2, 3].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute rounded-full border"
+                    style={{
+                      inset: `${16 + i * 12}%`,
+                      borderColor: `rgba(168, 85, 247, ${0.2 - i * 0.04})`,
+                    }}
+                    animate={{
+                      scale: [1, 1.06, 1],
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 2 + i * 0.5,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                ))}
 
-                {/* Mini avatar */}
+                {/* Main orb */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <svg viewBox="0 0 400 420" className="w-48 h-48 md:w-60 md:h-60">
-                    <defs>
-                      <radialGradient id="heroFaceGrad" cx="50%" cy="35%" r="55%">
-                        <stop offset="0%" stopColor="#fde8d8" />
-                        <stop offset="60%" stopColor="#f5d0b0" />
-                        <stop offset="100%" stopColor="#e8b898" />
-                      </radialGradient>
-                      <linearGradient id="heroHairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#1a1a2e" />
-                        <stop offset="50%" stopColor="#2d2d44" />
-                        <stop offset="100%" stopColor="#1a1a2e" />
-                      </linearGradient>
-                      <linearGradient id="heroBlazerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#1e1b4b" />
-                        <stop offset="100%" stopColor="#0f0a2e" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M 115 340 Q 115 300 155 275 L 175 262 L 200 254 L 225 262 L 245 275 Q 285 300 285 340 L 285 420 L 115 420 Z" fill="url(#heroBlazerGrad)" />
-                    <path d="M 185 262 L 195 278 L 200 275 L 205 278 L 215 262" fill="#e8e0f0" />
-                    <circle cx="200" cy="278" r="3" fill="#a78bfa" />
-                    <rect x="187" y="235" width="26" height="28" rx="6" fill="#e8b898" />
-                    <ellipse cx="200" cy="145" rx="82" ry="90" fill="url(#heroHairGrad)" />
-                    <ellipse cx="200" cy="152" rx="68" ry="78" fill="url(#heroFaceGrad)" />
-                    <path d="M 132 148 Q 128 70 200 58 Q 272 70 268 148 Q 265 105 240 90 Q 210 75 170 85 Q 140 95 132 148 Z" fill="url(#heroHairGrad)" />
-                    <path d="M 132 148 Q 125 175 120 220 Q 118 240 125 260" stroke="#2d2d44" strokeWidth="8" fill="none" strokeLinecap="round" />
-                    <path d="M 268 148 Q 275 175 280 220 Q 282 240 275 260" stroke="#2d2d44" strokeWidth="8" fill="none" strokeLinecap="round" />
-                    <circle cx="132" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
-                    <circle cx="268" cy="158" r="3.5" fill="#a78bfa" opacity="0.9" />
-                    <path d="M 158 128 Q 165 122 172 128" stroke="#1a1a2e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                    <circle cx="165" cy="132" r="4.5" fill="#1a1a2e" />
-                    <circle cx="166" cy="131" r="1.8" fill="#0a0a14" />
-                    <circle cx="167.5" cy="130" r="0.8" fill="white" opacity="0.8" />
-                    <path d="M 228 128 Q 235 122 242 128" stroke="#1a1a2e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                    <circle cx="235" cy="132" r="4.5" fill="#1a1a2e" />
-                    <circle cx="236" cy="131" r="1.8" fill="#0a0a14" />
-                    <circle cx="237.5" cy="130" r="0.8" fill="white" opacity="0.8" />
-                    <path d="M 155 120 Q 165 114 175 118" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-                    <path d="M 225 118 Q 235 114 245 120" stroke="#2d2d44" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-                    <path d="M 198 142 Q 200 152 202 142" stroke="#d4a88a" strokeWidth="1.2" fill="none" />
-                    <ellipse cx="155" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
-                    <ellipse cx="245" cy="155" rx="10" ry="6" fill="#f0a0a0" opacity="0.2" />
-                    <path d="M 190 172 Q 200 178 210 172" stroke="#c0392b" strokeWidth="2" fill="none" strokeLinecap="round" />
-                    <path d="M 192 171 Q 200 168 208 171" stroke="#e74c3c" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                  </svg>
+                  <div className="relative w-32 h-32 md:w-40 md:h-40">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-500 shadow-2xl" style={{ boxShadow: '0 0 60px rgba(168,85,247,0.4), 0 0 120px rgba(99,102,241,0.2)' }} />
+                    <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 via-transparent to-transparent" />
+                    <div className="absolute w-6 h-3 rounded-full bg-white/30 blur-sm" style={{ left: '32%', top: '26%' }} />
+                    <div className="absolute rounded-full bg-white/35 blur-sm" style={{ width: 20, height: 20, left: '50%', top: '38%', transform: 'translate(-50%, -50%)' }} />
+                  </div>
                 </div>
+
+                {/* Rotating dashed ring */}
+                <motion.div
+                  className="absolute inset-[-4px] rounded-full border border-dashed border-purple-400/15"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+                />
 
                 {/* Floating status badges */}
                 <motion.div
@@ -695,7 +740,7 @@ export default function VoiceAIPage() {
                 isCameraOn={cameraOn}
                 onToggleCamera={() => setCameraOn(!cameraOn)}
                 onToggleMic={() => setMicOn(!micOn)}
-                onEndCall={endInterview}
+                onEndCall={endInterviewFn}
                 isMicOn={micOn}
                 aiName="Aria"
                 aiSubtitle={getAiSubtitle()}
@@ -846,7 +891,7 @@ export default function VoiceAIPage() {
                   </div>
                 </div>
                 <motion.button whileTap={{ scale: 0.95 }} onClick={resetInterview}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-medium text-white">
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-medium text-white">
                   <RotateCcw className="h-4 w-4" /> New Interview
                 </motion.button>
               </motion.div>
