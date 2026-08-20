@@ -5,5 +5,7 @@ export { default as TranscriptionDisplay } from './TranscriptionDisplay';
 export { default as FeedbackCard } from './FeedbackCard';
 export { default as SessionHistory } from './SessionHistory';
 export { default as InterviewSidebar } from './InterviewSidebar';
+export { default as AIAvatar } from './AIAvatar';
+export { default as VideoCallLayout } from './VideoCallLayout';
 export type { ChatMessage } from './InterviewSidebar';
 export type { FaceDetection } from './FaceDetectionOverlay';

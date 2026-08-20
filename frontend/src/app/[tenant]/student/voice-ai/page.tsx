@@ -1,22 +1,20 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import {
-  Waveform3D,
-  FaceDetectionOverlay,
-  RecordingTimer,
+  VideoCallLayout,
   InterviewSidebar,
+  RecordingTimer,
   type ChatMessage,
 } from '@/components/features/VoiceAI'
 import useVoiceRecognition from '@/hooks/useVoiceRecognition'
 import useSpeechSynthesis from '@/hooks/useSpeechSynthesis'
 import {
-  Video, VideoOff, Camera, Upload, FileText, Mic, Volume2,
-  RotateCcw, CheckCircle, XCircle, Bot, Pause, Play,
-  Target, ArrowRight, SkipForward,
+  Upload, FileText, Mic, RotateCcw, CheckCircle, XCircle,
+  Bot, Pause, Play, Target, SkipForward,
 } from 'lucide-react'
 
 type PracticeMode = 'free' | 'mock-hr' | 'mock-technical' | 'mock-behavioral'
@@ -26,14 +24,13 @@ interface ModeOption {
   label: string
   description: string
   icon: string
-  color: string
 }
 
 const MODES: ModeOption[] = [
-  { id: 'free', label: 'Free Practice', description: 'Speak freely on any topic', icon: '🎤', color: 'from-blue-500 to-cyan-500' },
-  { id: 'mock-hr', label: 'HR Interview', description: 'HR-style behavioral questions', icon: '👔', color: 'from-purple-500 to-pink-500' },
-  { id: 'mock-technical', label: 'Technical', description: 'Problem-solving & system design', icon: '💻', color: 'from-green-500 to-emerald-500' },
-  { id: 'mock-behavioral', label: 'Behavioral', description: 'STAR method scenario questions', icon: '🧠', color: 'from-orange-500 to-amber-500' },
+  { id: 'free', label: 'Free Practice', description: 'Speak freely on any topic', icon: '🎤' },
+  { id: 'mock-hr', label: 'HR Interview', description: 'HR-style behavioral questions', icon: '👔' },
+  { id: 'mock-technical', label: 'Technical', description: 'Problem-solving & system design', icon: '💻' },
+  { id: 'mock-behavioral', label: 'Behavioral', description: 'STAR method scenario questions', icon: '🧠' },
 ]
 
 interface InterviewQuestion {
@@ -166,21 +163,12 @@ export default function VoiceAIPage() {
   const [overallScore, setOverallScore] = useState(0)
   const [phase, setPhase] = useState<'greeting' | 'asking' | 'listening' | 'ai-responding' | 'idle'>('idle')
 
-  const [cameraEnabled, setCameraEnabled] = useState(false)
-  const [cameraError, setCameraError] = useState<string | null>(null)
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
+  const [cameraOn, setCameraOn] = useState(false)
+  const [micOn, setMicOn] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const audioIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const faceDetectionRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [audioData, setAudioData] = useState<number[]>(new Array(32).fill(0))
-  const [faceData, setFaceData] = useState<{
-    detected: boolean; x: number; y: number; width: number; height: number; confidence: number
-  } | null>(null)
-  const [warnings, setWarnings] = useState<string[]>([])
-  const [warningCount, setWarningCount] = useState(0)
+  const startTimeRef = useRef<number>(Date.now())
 
   const addMessage = useCallback((role: 'interviewer' | 'candidate', text: string, score?: number) => {
     const msg: ChatMessage = {
@@ -193,8 +181,6 @@ export default function VoiceAIPage() {
     setMessages((prev) => [...prev, msg])
     return msg
   }, [])
-
-  const startTimeRef = useRef<number>(Date.now())
 
   const onSpeechEnd = useCallback(() => {
     setPhase((prev) => {
@@ -209,10 +195,6 @@ export default function VoiceAIPage() {
     pitch: 1.0,
     onEnd: onSpeechEnd,
   })
-
-  const handleInterimResult = useCallback((_transcript: string, isFinal: boolean) => {
-    if (!isFinal) return
-  }, [])
 
   const onRecognitionEnd = useCallback(() => {
     setPhase((prev) => {
@@ -233,7 +215,6 @@ export default function VoiceAIPage() {
   } = useVoiceRecognition({
     continuous: true,
     interimResults: true,
-    onResult: handleInterimResult,
     onEnd: onRecognitionEnd,
   })
 
@@ -245,6 +226,19 @@ export default function VoiceAIPage() {
     addMessage('interviewer', question.text)
     speak(question.text)
   }, [speak, addMessage])
+
+  const moveToNext = useCallback(() => {
+    const next = currentIdx + 1
+    if (next >= questions.length) {
+      endInterview()
+    } else {
+      setCurrentIdx(next)
+      resetTranscript()
+      setTimeout(() => {
+        askQuestion(questions[next])
+      }, 1500)
+    }
+  }, [currentIdx, questions, askQuestion, resetTranscript])
 
   const processAnswer = useCallback((answer: string) => {
     if (!currentQuestion) return
@@ -272,20 +266,7 @@ export default function VoiceAIPage() {
         moveToNext()
       }
     }, 500)
-  }, [currentQuestion, speak, addMessage, resetTranscript, startListening])
-
-  const moveToNext = useCallback(() => {
-    const next = currentIdx + 1
-    if (next >= questions.length) {
-      endInterview()
-    } else {
-      setCurrentIdx(next)
-      resetTranscript()
-      setTimeout(() => {
-        askQuestion(questions[next])
-      }, 1500)
-    }
-  }, [currentIdx, questions, askQuestion, resetTranscript])
+  }, [currentQuestion, speak, addMessage, resetTranscript, startListening, moveToNext])
 
   const startInterviewFlow = useCallback(() => {
     let qs = [...SMART_QUESTIONS[selectedMode]]
@@ -369,9 +350,7 @@ export default function VoiceAIPage() {
     setInterviewStarted(false)
     setPhase('idle')
 
-    ;[timerRef, audioIntervalRef, faceDetectionRef].forEach((r) => {
-      if (r.current) clearInterval(r.current as ReturnType<typeof setInterval>)
-    })
+    if (timerRef.current) clearInterval(timerRef.current)
 
     const scores = messages.filter((m) => m.score).map((m) => m.score!)
     const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 70
@@ -403,9 +382,7 @@ export default function VoiceAIPage() {
     setIsPaused(false)
     setPhase('idle')
     resetTranscript()
-    ;[timerRef, audioIntervalRef, faceDetectionRef].forEach((r) => {
-      if (r.current) clearInterval(r.current as ReturnType<typeof setInterval>)
-    })
+    if (timerRef.current) clearInterval(timerRef.current)
   }, [stopListening, stopSpeaking, resetTranscript])
 
   useEffect(() => {
@@ -415,61 +392,11 @@ export default function VoiceAIPage() {
         return p - 1
       })
     }, 1000)
-    audioIntervalRef.current = setInterval(() => {
-      setAudioData((p) => p.map(() => Math.random() * 0.8 + 0.1))
-    }, 80)
     return () => {
-      ;[timerRef, audioIntervalRef, faceDetectionRef].forEach((r) => {
-        if (r.current) clearInterval(r.current as ReturnType<typeof setInterval>)
-      })
-      streamRef.current?.getTracks().forEach((t) => t.stop())
+      if (timerRef.current) clearInterval(timerRef.current)
       window.speechSynthesis?.cancel()
     }
   }, [endInterview])
-
-  const startCamera = useCallback(async () => {
-    try {
-      setCameraError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setCameraEnabled(true)
-      faceDetectionRef.current = setInterval(() => {
-        const ok = Math.random() > 0.05
-        setFaceData(ok
-          ? { detected: true, x: 25 + Math.random() * 10, y: 15 + Math.random() * 10, width: 40 + Math.random() * 5, height: 50 + Math.random() * 5, confidence: 0.85 + Math.random() * 0.15 }
-          : { detected: false, x: 0, y: 0, width: 0, height: 0, confidence: 0 })
-        if (!ok) {
-          setWarnings((prev) => [...prev.slice(-4), 'Face not detected!'])
-          setWarningCount((prev) => prev + 1)
-        }
-      }, 1500)
-    } catch (err: unknown) {
-      const error = err as { name?: string; message?: string }
-      if (error?.name === 'NotAllowedError') {
-        setCameraError('Camera permission denied. Please allow camera access in your browser settings.')
-      } else if (error?.name === 'NotFoundError') {
-        setCameraError('No camera found. Please connect a camera device.')
-      } else {
-        setCameraError(`Camera error: ${error?.message || 'Unknown error'}`)
-      }
-    }
-  }, [])
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
-    if (faceDetectionRef.current) clearInterval(faceDetectionRef.current as ReturnType<typeof setInterval>)
-    setCameraEnabled(false)
-    setFaceData(null)
-  }, [])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -480,11 +407,20 @@ export default function VoiceAIPage() {
     setUploadedFile(file)
   }
 
+  const getAiSubtitle = () => {
+    if (phase === 'greeting') return 'Welcoming you...'
+    if (phase === 'asking') return 'Asking a question...'
+    if (phase === 'listening') return 'Waiting for your answer...'
+    if (phase === 'ai-responding') return 'Analyzing your response...'
+    if (currentQuestion) return `Q${currentIdx + 1}: ${currentQuestion.category}`
+    return 'Ready to begin'
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-      <div className="max-w-[1440px] mx-auto px-4 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 py-4">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-4">
           <h1 className="text-2xl font-bold text-white mb-1">AI Interview Practice</h1>
           <p className="text-sm text-zinc-400">
             {interviewStarted
@@ -492,7 +428,7 @@ export default function VoiceAIPage() {
               : 'Upload your resume and practice with an AI interviewer'}
           </p>
           {interviewStarted && (
-            <div className="mt-3 max-w-md mx-auto">
+            <div className="mt-2 max-w-md mx-auto">
               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <motion.div animate={{ width: `${progress}%` }} className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" />
               </div>
@@ -500,172 +436,160 @@ export default function VoiceAIPage() {
           )}
         </motion.div>
 
-        {/* Mode Selection */}
+        {/* Pre-interview: Mode Selection + Upload */}
         {!interviewStarted && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            {MODES.map((mode, i) => (
-              <motion.button
-                key={mode.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => setSelectedMode(mode.id)}
-                className={cn(
-                  'relative rounded-xl p-4 text-left transition-all border',
-                  selectedMode === mode.id
-                    ? 'bg-white/10 border-blue-500/50 shadow-lg shadow-blue-500/10'
-                    : 'bg-white/5 border-white/10 hover:bg-white/8'
-                )}
-              >
-                <div className="text-2xl mb-2">{mode.icon}</div>
-                <div className="text-sm font-medium text-white">{mode.label}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{mode.description}</div>
-              </motion.button>
-            ))}
-          </div>
-        )}
-
-        {/* Upload Section */}
-        {showUpload && !interviewStarted && (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-6">
-            <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx" onChange={handleFileUpload} className="hidden" />
-            <div className="flex items-center gap-6">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <Upload className="h-5 w-5 text-blue-400" />
-                  <h3 className="text-white font-medium">Resume / Job Description</h3>
-                </div>
-                <p className="text-zinc-400 text-sm mb-4">
-                  Upload your resume or job description for personalized interview questions.
-                </p>
-                {uploadedFile ? (
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                      <FileText className="h-4 w-4 text-green-400" />
-                      <span className="text-sm text-green-300">{uploadedFile.name}</span>
-                    </div>
-                    <button onClick={() => { setUploadedFile(null); setFileContent('') }} className="text-zinc-400 hover:text-red-400">
-                      <XCircle className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={() => fileInputRef.current?.click()} className="rounded-lg bg-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/15 border border-white/10 transition">
-                    Choose file
-                  </button>
-                )}
-              </div>
-              <div className="text-right">
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 max-w-3xl mx-auto">
+              {MODES.map((mode, i) => (
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={startInterviewFlow}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-blue-600/20"
+                  key={mode.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => setSelectedMode(mode.id)}
+                  className={cn(
+                    'relative rounded-xl p-4 text-left transition-all border',
+                    selectedMode === mode.id
+                      ? 'bg-white/10 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                      : 'bg-white/5 border-white/10 hover:bg-white/8'
+                  )}
                 >
-                  Start Interview
+                  <div className="text-2xl mb-2">{mode.icon}</div>
+                  <div className="text-sm font-medium text-white">{mode.label}</div>
+                  <div className="text-xs text-zinc-400 mt-0.5">{mode.description}</div>
                 </motion.button>
-              </div>
+              ))}
             </div>
-          </motion.div>
-        )}
 
-        {/* Main Layout: Camera + Controls | Sidebar */}
-        {interviewStarted && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            {/* Left: Camera + Waveform + Controls */}
-            <div className="lg:col-span-3 space-y-4">
-              {/* Camera */}
-              <div className="relative aspect-video rounded-2xl overflow-hidden bg-zinc-800 border border-white/10">
-                <video ref={videoRef} className={cn('w-full h-full object-cover', cameraEnabled ? 'opacity-100' : 'opacity-0')} muted playsInline />
-                {!cameraEnabled && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                    {cameraError ? (
-                      <>
-                        <Camera className="h-12 w-12 text-red-400" />
-                        <p className="text-red-400 text-sm max-w-xs text-center">{cameraError}</p>
-                        <button onClick={startCamera} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">
-                          <Video className="h-4 w-4" /> Try Again
+            {showUpload && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-6 max-w-3xl mx-auto">
+                <input ref={fileInputRef} type="file" accept=".pdf,.txt,.doc,.docx" onChange={handleFileUpload} className="hidden" />
+                <div className="flex items-center gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Upload className="h-5 w-5 text-blue-400" />
+                      <h3 className="text-white font-medium">Resume / Job Description</h3>
+                    </div>
+                    <p className="text-zinc-400 text-sm mb-4">
+                      Upload your resume or job description for personalized interview questions.
+                    </p>
+                    {uploadedFile ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
+                          <FileText className="h-4 w-4 text-green-400" />
+                          <span className="text-sm text-green-300">{uploadedFile.name}</span>
+                        </div>
+                        <button onClick={() => { setUploadedFile(null); setFileContent('') }} className="text-zinc-400 hover:text-red-400">
+                          <XCircle className="h-4 w-4" />
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <Camera className="h-12 w-12 text-zinc-600" />
-                        <p className="text-zinc-500 text-xs">Camera is off (optional)</p>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={startCamera}
-                          className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-600/20">
-                          <Video className="h-4 w-4" /> Enable Camera
-                        </motion.button>
-                      </>
+                      <button onClick={() => fileInputRef.current?.click()} className="rounded-lg bg-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/15 border border-white/10 transition">
+                        Choose file
+                      </button>
                     )}
                   </div>
-                )}
-                {cameraEnabled && (
-                  <button onClick={stopCamera} className="absolute top-3 right-3 z-20 rounded-full bg-red-500/80 p-2 text-white">
-                    <VideoOff className="h-4 w-4" />
-                  </button>
-                )}
-                <AnimatePresence>
-                  {isSpeaking && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-blue-500/90 px-3 py-1.5">
-                      <Volume2 className="h-3.5 w-3.5 text-white animate-pulse" />
-                      <span className="text-xs text-white font-medium">Interviewer is speaking</span>
-                    </motion.div>
-                  )}
-                  {isListening && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-emerald-500/90 px-3 py-1.5">
-                      <Mic className="h-3.5 w-3.5 text-white animate-pulse" />
-                      <span className="text-xs text-white font-medium">Listening...</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <FaceDetectionOverlay faceData={faceData} warnings={warnings} warningCount={warningCount} className="absolute inset-0" />
-              </div>
+                  <div className="text-right">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={startInterviewFlow}
+                      className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-blue-600/20"
+                    >
+                      Start Interview
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
 
-              {/* Waveform */}
-              <div className="h-20 rounded-2xl overflow-hidden border border-white/10">
-                <Waveform3D audioData={isListening ? audioData.map(() => Math.random() * 0.6 + 0.2) : audioData} isRecording={isListening || isSpeaking} className="w-full h-full" />
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-3">
-                <RecordingTimer totalTime={TOTAL_TIME} remainingTime={remainingTime} isRecording={interviewStarted} isPaused={isPaused} />
-
-                <div className="flex-1 flex items-center gap-2">
+        {/* Video Call + Sidebar */}
+        {interviewStarted && (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ height: 'calc(100vh - 10rem)' }}>
+            {/* Video Call Area */}
+            <div className="lg:col-span-3 relative rounded-2xl overflow-hidden">
+              <VideoCallLayout
+                isSpeaking={isSpeaking}
+                isListening={isListening}
+                isCameraOn={cameraOn}
+                onToggleCamera={() => setCameraOn(!cameraOn)}
+                onToggleMic={() => setMicOn(!micOn)}
+                onEndCall={endInterview}
+                isMicOn={micOn}
+                aiName="AI Interviewer"
+                aiSubtitle={getAiSubtitle()}
+              >
+                {/* Floating controls overlay */}
+                <div className="absolute bottom-20 left-0 right-0 z-30 flex items-center justify-center gap-3 px-4">
                   {phase === 'listening' && (
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleSubmitAnswer}
-                      className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-medium text-white shadow-lg shadow-emerald-600/20">
+                    <motion.button
+                      initial={{ scale: 0, y: 20 }}
+                      animate={{ scale: 1, y: 0 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSubmitAnswer}
+                      className="flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-emerald-600/30"
+                    >
                       <CheckCircle className="h-4 w-4" /> Submit Answer
                     </motion.button>
                   )}
                   {phase === 'listening' && (
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => { stopListening(); setIsPaused(true) }}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm text-zinc-300 border border-white/10">
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => { stopListening(); setIsPaused(true) }}
+                      className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-3 text-sm text-white backdrop-blur-sm"
+                    >
                       <Pause className="h-4 w-4" /> Pause
                     </motion.button>
                   )}
                   {isPaused && (
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setIsPaused(false); startListening() }}
-                      className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-medium text-white">
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => { setIsPaused(false); startListening() }}
+                      className="flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-medium text-white"
+                    >
                       <Play className="h-4 w-4" /> Resume
                     </motion.button>
                   )}
                   {!isListening && !isSpeaking && phase !== 'greeting' && phase !== 'asking' && !isPaused && (
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleSkipQuestion}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-white/5 px-4 py-3 text-sm text-zinc-400 hover:text-zinc-300 border border-white/5">
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSkipQuestion}
+                      className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm text-zinc-300 backdrop-blur-sm"
+                    >
                       <SkipForward className="h-4 w-4" /> Skip
                     </motion.button>
                   )}
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={endInterview}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 hover:bg-red-500/20 border border-red-500/10">
-                    End
-                  </motion.button>
                 </div>
-              </div>
 
+                {/* Timer - top left inside video */}
+                <div className="absolute top-16 left-4 z-30">
+                  <RecordingTimer
+                    totalTime={TOTAL_TIME}
+                    remainingTime={remainingTime}
+                    isRecording={interviewStarted}
+                    isPaused={isPaused}
+                  />
+                </div>
+              </VideoCallLayout>
+            </div>
+
+            {/* Sidebar: Live Transcription + Question */}
+            <div className="lg:col-span-2 flex flex-col gap-3 h-full">
               {/* Current Question Card */}
               {currentQuestion && (
-                <motion.div layout className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <motion.div layout className="rounded-xl border border-white/10 bg-white/5 p-4 shrink-0">
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-blue-400" />
                     <span className="text-xs text-zinc-400">Current Question</span>
@@ -681,30 +605,20 @@ export default function VoiceAIPage() {
                   <p className="text-sm text-white leading-relaxed">{currentQuestion.text}</p>
                 </motion.div>
               )}
-            </div>
 
-            {/* Right: Sidebar with live transcription */}
-            <div className="lg:col-span-2 h-[calc(100vh-12rem)]">
-              <InterviewSidebar
-                messages={messages}
-                interimTranscript={interimTranscript}
-                isListening={isListening}
-                isAiSpeaking={isSpeaking}
-                currentQuestion={currentQuestion?.text || ''}
-                questionNumber={currentIdx + 1}
-                totalQuestions={questions.length}
-              />
+              {/* Live Transcription Sidebar */}
+              <div className="flex-1 min-h-0">
+                <InterviewSidebar
+                  messages={messages}
+                  interimTranscript={interimTranscript}
+                  isListening={isListening}
+                  isAiSpeaking={isSpeaking}
+                  currentQuestion={currentQuestion?.text || ''}
+                  questionNumber={currentIdx + 1}
+                  totalQuestions={questions.length}
+                />
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Mode Selection (before interview) */}
-        {!interviewStarted && !showUpload && (
-          <div className="space-y-4">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={startInterviewFlow}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 py-3 text-sm font-medium text-white shadow-lg shadow-blue-600/20">
-              <Mic className="h-4 w-4" /> Start Practice
-            </motion.button>
           </div>
         )}
 
