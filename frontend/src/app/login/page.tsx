@@ -154,12 +154,6 @@ export default function LoginPage() {
             </ButtonGlow>
           </form>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary hover:underline">
-              Sign up for free
-            </Link>
-          </p>
         </div>
       </motion.div>
     </div>
