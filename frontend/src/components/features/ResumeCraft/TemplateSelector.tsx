@@ -13,6 +13,8 @@ export interface Template {
     accent: string
   }
   preview: string
+  category: string
+  isNew: boolean
 }
 
 export const templates: Template[] = [
@@ -25,6 +27,8 @@ export const templates: Template[] = [
       accent: '#60A5FA',
     },
     preview: 'bg-gradient-to-br from-blue-500 to-blue-700',
+    category: 'Professional',
+    isNew: false,
   },
   {
     id: 'gradient-green',
@@ -35,6 +39,8 @@ export const templates: Template[] = [
       accent: '#4ADE80',
     },
     preview: 'bg-gradient-to-br from-green-500 to-emerald-700',
+    category: 'Modern',
+    isNew: false,
   },
   {
     id: 'bold-red',
@@ -45,6 +51,8 @@ export const templates: Template[] = [
       accent: '#F87171',
     },
     preview: 'bg-gradient-to-br from-red-500 to-red-700',
+    category: 'Bold',
+    isNew: false,
   },
   {
     id: 'elegant-black',
@@ -55,6 +63,8 @@ export const templates: Template[] = [
       accent: '#A1A1AA',
     },
     preview: 'bg-gradient-to-br from-zinc-800 to-zinc-950',
+    category: 'Executive',
+    isNew: false,
   },
   {
     id: 'vibrant-purple',
@@ -65,6 +75,92 @@ export const templates: Template[] = [
       accent: '#C084FC',
     },
     preview: 'bg-gradient-to-br from-purple-500 to-purple-800',
+    category: 'Creative',
+    isNew: false,
+  },
+  {
+    id: 'sunset-orange',
+    name: 'Sunset Orange',
+    colors: {
+      primary: '#EA580C',
+      secondary: '#9A3412',
+      accent: '#FB923C',
+    },
+    preview: 'bg-gradient-to-br from-orange-500 to-orange-700',
+    category: 'Modern',
+    isNew: true,
+  },
+  {
+    id: 'professional-navy',
+    name: 'Professional Navy',
+    colors: {
+      primary: '#1E3A5F',
+      secondary: '#0F172A',
+      accent: '#60A5FA',
+    },
+    preview: 'bg-gradient-to-br from-slate-600 to-slate-900',
+    category: 'Executive',
+    isNew: true,
+  },
+  {
+    id: 'tech-green',
+    name: 'Tech Green',
+    colors: {
+      primary: '#059669',
+      secondary: '#065F46',
+      accent: '#34D399',
+    },
+    preview: 'bg-gradient-to-br from-emerald-500 to-emerald-800',
+    category: 'Tech',
+    isNew: true,
+  },
+  {
+    id: 'executive-gray',
+    name: 'Executive Gray',
+    colors: {
+      primary: '#374151',
+      secondary: '#111827',
+      accent: '#9CA3AF',
+    },
+    preview: 'bg-gradient-to-br from-gray-600 to-gray-900',
+    category: 'Executive',
+    isNew: true,
+  },
+  {
+    id: 'creative-pink',
+    name: 'Creative Pink',
+    colors: {
+      primary: '#DB2777',
+      secondary: '#9D174D',
+      accent: '#F472B6',
+    },
+    preview: 'bg-gradient-to-br from-pink-500 to-pink-800',
+    category: 'Creative',
+    isNew: true,
+  },
+  {
+    id: 'minimal-teal',
+    name: 'Minimal Teal',
+    colors: {
+      primary: '#0D9488',
+      secondary: '#115E59',
+      accent: '#5EEAD4',
+    },
+    preview: 'bg-gradient-to-br from-teal-500 to-teal-800',
+    category: 'Minimal',
+    isNew: true,
+  },
+  {
+    id: 'royal-blue',
+    name: 'Royal Blue',
+    colors: {
+      primary: '#2563EB',
+      secondary: '#1D4ED8',
+      accent: '#93C5FD',
+    },
+    preview: 'bg-gradient-to-br from-blue-600 to-blue-900',
+    category: 'Professional',
+    isNew: true,
   },
 ]
 
@@ -86,7 +182,7 @@ export default function TemplateSelector({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {templates.map((template) => {
           const isSelected = selectedTemplate === template.id
           return (
@@ -106,7 +202,7 @@ export default function TemplateSelector({
               {/* Template Preview */}
               <div
                 className={cn(
-                  'relative h-36 w-full rounded-lg overflow-hidden',
+                  'relative h-32 w-full rounded-lg overflow-hidden',
                   template.preview
                 )}
               >
@@ -144,29 +240,23 @@ export default function TemplateSelector({
               </div>
 
               {/* Template Info */}
-              <div className="p-3">
+              <div className="p-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">{template.name}</span>
-                  <div className="flex items-center gap-1 text-xs text-yellow-500">
-                    <Coins className="h-3 w-3" />
+                  <span className="text-xs font-semibold">{template.name}</span>
+                  <div className="flex items-center gap-1 text-[10px] text-yellow-500">
+                    <Coins className="h-2.5 w-2.5" />
                     <span>25</span>
                   </div>
                 </div>
 
-                {/* Color dots */}
-                <div className="mt-2 flex gap-1.5">
-                  <div
-                    className="h-3 w-3 rounded-full border border-white/20"
-                    style={{ backgroundColor: template.colors.primary }}
-                  />
-                  <div
-                    className="h-3 w-3 rounded-full border border-white/20"
-                    style={{ backgroundColor: template.colors.secondary }}
-                  />
-                  <div
-                    className="h-3 w-3 rounded-full border border-white/20"
-                    style={{ backgroundColor: template.colors.accent }}
-                  />
+                {/* Category + NEW badge */}
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="text-[9px] text-muted-foreground">{template.category}</span>
+                  {template.isNew && (
+                    <span className="rounded-full bg-primary/10 px-1 py-0.5 text-[8px] font-bold text-primary">
+                      NEW
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.button>
