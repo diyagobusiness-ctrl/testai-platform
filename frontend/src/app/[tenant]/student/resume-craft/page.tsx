@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
+import html2pdf from 'html2pdf.js'
 import {
   StepIndicator,
   PersonalInfoStep,
@@ -29,6 +30,7 @@ import {
   Sparkles,
   Eye,
   EyeOff,
+  Loader2,
 } from 'lucide-react'
 
 function generateId() {
@@ -38,6 +40,8 @@ function generateId() {
 export default function ResumeCraftPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [showPreview, setShowPreview] = useState(true)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const resumeRef = useRef<HTMLDivElement>(null)
 
   // Form state
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
@@ -109,8 +113,27 @@ export default function ResumeCraftPage() {
     if (canGoPrev) setCurrentStep((s) => s - 1)
   }, [canGoPrev])
 
-  const handleDownload = () => {
-    window.print()
+  const handleDownload = async () => {
+    if (!resumeRef.current || isDownloading) return
+    
+    setIsDownloading(true)
+    
+    try {
+      const element = resumeRef.current
+      const opt = {
+        margin: 0,
+        filename: `${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'px', format: [612, 792], orientation: 'portrait' },
+      }
+      
+      await html2pdf().set(opt).from(element).save()
+    } catch (error) {
+      console.error('PDF download failed:', error)
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   const renderStep = () => {
@@ -147,21 +170,29 @@ export default function ResumeCraftPage() {
 
               <motion.button
                 onClick={handleDownload}
+                disabled={isDownloading}
                 className={cn(
                   'mt-4 flex items-center gap-3 rounded-xl bg-primary px-8 py-4 font-semibold text-white',
-                  'shadow-lg shadow-primary/30 transition-all'
+                  'shadow-lg shadow-primary/30 transition-all',
+                  'disabled:opacity-60 disabled:cursor-not-allowed'
                 )}
-                whileHover={{
+                whileHover={!isDownloading ? {
                   scale: 1.02,
                   boxShadow: '0 0 30px rgba(99, 102, 241, 0.4)',
-                }}
-                whileTap={{ scale: 0.98 }}
+                } : {}}
+                whileTap={!isDownloading ? { scale: 0.98 } : {}}
               >
-                <Download className="h-5 w-5" />
-                Download PDF
-                <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                  25 credits
-                </span>
+                {isDownloading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+                {isDownloading ? 'Generating PDF...' : 'Download PDF'}
+                {!isDownloading && (
+                  <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                    25 credits
+                  </span>
+                )}
               </motion.button>
             </div>
           </div>
@@ -308,16 +339,18 @@ export default function ResumeCraftPage() {
 
                   <div className="overflow-hidden rounded-2xl border border-border bg-muted/30 p-4">
                     <div className="origin-top scale-[0.65] sm:scale-75">
-                      <ResumePreview
-                        personalInfo={personalInfo}
-                        summary={summary}
-                        education={education}
-                        experience={experience}
-                        skills={skills}
-                        projects={projects}
-                        certifications={certifications}
-                        selectedTemplate={selectedTemplate}
-                      />
+                      <div ref={resumeRef}>
+                        <ResumePreview
+                          personalInfo={personalInfo}
+                          summary={summary}
+                          education={education}
+                          experience={experience}
+                          skills={skills}
+                          projects={projects}
+                          certifications={certifications}
+                          selectedTemplate={selectedTemplate}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
