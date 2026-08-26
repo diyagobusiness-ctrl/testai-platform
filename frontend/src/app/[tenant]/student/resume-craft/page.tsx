@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
-import html2pdf from 'html2pdf.js'
 import {
   StepIndicator,
   PersonalInfoStep,
@@ -119,13 +118,14 @@ export default function ResumeCraftPage() {
     setIsDownloading(true)
     
     try {
+      const html2pdf = (await import('html2pdf.js')).default
       const element = resumeRef.current
       const opt = {
         margin: 0,
         filename: `${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF: { unit: 'px', format: [612, 792], orientation: 'portrait' },
+        jsPDF: { unit: 'px', format: [612, 792], orientation: 'portrait' as const },
       }
       
       await html2pdf().set(opt).from(element).save()
@@ -339,18 +339,16 @@ export default function ResumeCraftPage() {
 
                   <div className="overflow-hidden rounded-2xl border border-border bg-muted/30 p-4">
                     <div className="origin-top scale-[0.65] sm:scale-75">
-                      <div ref={resumeRef}>
-                        <ResumePreview
-                          personalInfo={personalInfo}
-                          summary={summary}
-                          education={education}
-                          experience={experience}
-                          skills={skills}
-                          projects={projects}
-                          certifications={certifications}
-                          selectedTemplate={selectedTemplate}
-                        />
-                      </div>
+                      <ResumePreview
+                        personalInfo={personalInfo}
+                        summary={summary}
+                        education={education}
+                        experience={experience}
+                        skills={skills}
+                        projects={projects}
+                        certifications={certifications}
+                        selectedTemplate={selectedTemplate}
+                      />
                     </div>
                   </div>
                 </div>
@@ -401,6 +399,22 @@ export default function ResumeCraftPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden full-size resume for PDF generation */}
+      <div className="fixed -left-[9999px] -top-[9999px] pointer-events-none">
+        <div ref={resumeRef}>
+          <ResumePreview
+            personalInfo={personalInfo}
+            summary={summary}
+            education={education}
+            experience={experience}
+            skills={skills}
+            projects={projects}
+            certifications={certifications}
+            selectedTemplate={selectedTemplate}
+          />
+        </div>
+      </div>
     </div>
   )
 }
