@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import {
@@ -40,7 +40,6 @@ export default function ResumeCraftPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [showPreview, setShowPreview] = useState(true)
   const [isDownloading, setIsDownloading] = useState(false)
-  const resumeRef = useRef<HTMLDivElement>(null)
 
   // Form state
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
@@ -113,38 +112,71 @@ export default function ResumeCraftPage() {
   }, [canGoPrev])
 
   const handleDownload = async () => {
-    if (!resumeRef.current || isDownloading) return
+    if (isDownloading) return
     
     setIsDownloading(true)
     
     try {
       const jsPDF = (await import('jspdf')).default
       const html2canvas = (await import('html2canvas')).default
-      
-      const element = resumeRef.current
-      
-      const canvas = await html2canvas(element, {
+
+      const tempContainer = document.createElement('div')
+      tempContainer.style.position = 'absolute'
+      tempContainer.style.left = '0'
+      tempContainer.style.top = '0'
+      tempContainer.style.width = '612px'
+      tempContainer.style.zIndex = '-1'
+      tempContainer.style.opacity = '0'
+      tempContainer.style.pointerEvents = 'none'
+      tempContainer.style.background = 'white'
+      document.body.appendChild(tempContainer)
+
+      const { createRoot } = await import('react-dom/client')
+      const { createElement } = await import('react')
+      const { default: Preview } = await import('@/components/features/ResumeCraft/ResumePreview')
+
+      await new Promise<void>((resolve) => {
+        const root = createRoot(tempContainer)
+        root.render(
+          createElement(Preview, {
+            personalInfo,
+            summary,
+            education,
+            experience,
+            skills,
+            projects,
+            certifications,
+            selectedTemplate,
+          })
+        )
+        setTimeout(resolve, 100)
+      })
+
+      await new Promise((r) => setTimeout(r, 300))
+
+      const canvas = await html2canvas(tempContainer, {
         scale: 2,
         useCORS: true,
         logging: false,
         allowTaint: true,
       })
-      
+
       const imgData = canvas.toDataURL('image/jpeg', 0.95)
       const imgWidth = 612
       const imgHeight = (canvas.height * imgWidth) / canvas.width
-      
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
         format: [612, 792],
       })
-      
+
       pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
       pdf.save(`${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`)
+
+      document.body.removeChild(tempContainer)
     } catch (error) {
       console.error('PDF download failed:', error)
-      alert('Failed to generate PDF. Please try again.')
     } finally {
       setIsDownloading(false)
     }
@@ -413,22 +445,6 @@ export default function ResumeCraftPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Hidden full-size resume for PDF generation */}
-      <div className="fixed -left-[9999px] -top-[9999px] pointer-events-none">
-        <div ref={resumeRef}>
-          <ResumePreview
-            personalInfo={personalInfo}
-            summary={summary}
-            education={education}
-            experience={experience}
-            skills={skills}
-            projects={projects}
-            certifications={certifications}
-            selectedTemplate={selectedTemplate}
-          />
-        </div>
-      </div>
     </div>
   )
 }
