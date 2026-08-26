@@ -118,19 +118,33 @@ export default function ResumeCraftPage() {
     setIsDownloading(true)
     
     try {
-      const html2pdf = (await import('html2pdf.js')).default
-      const element = resumeRef.current
-      const opt = {
-        margin: 0,
-        filename: `${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF: { unit: 'px', format: [612, 792], orientation: 'portrait' as const },
-      }
+      const jsPDF = (await import('jspdf')).default
+      const html2canvas = (await import('html2canvas')).default
       
-      await html2pdf().set(opt).from(element).save()
+      const element = resumeRef.current
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+      })
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const imgWidth = 612
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [612, 792],
+      })
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+      pdf.save(`${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`)
     } catch (error) {
       console.error('PDF download failed:', error)
+      alert('Failed to generate PDF. Please try again.')
     } finally {
       setIsDownloading(false)
     }
