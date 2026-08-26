@@ -15,7 +15,7 @@ router.use(tenantIsolation)
 // Dashboard
 router.get('/dashboard', async (req, res) => {
   try {
-    const studentId = req.user?.userId
+    const userId = req.user?.userId
 
     // Get student data
     const studentResult = await pool.query(
@@ -23,7 +23,7 @@ router.get('/dashboard', async (req, res) => {
        FROM students s
        JOIN users u ON s.user_id = u.id
        WHERE s.user_id = $1`,
-      [studentId]
+      [userId]
     )
 
     if (studentResult.rows.length === 0) {
@@ -32,12 +32,12 @@ router.get('/dashboard', async (req, res) => {
 
     const student = studentResult.rows[0]
 
-    // Get recent activity
+    // Get recent activity from all sources
     const activityResult = await pool.query(
       `SELECT 
         'aptitude' as type,
         'Completed Aptitude Test' as action,
-        score::text || '%' as result,
+        COALESCE(score::text || '%', 'In Progress') as result,
         started_at as created_at
        FROM student_exams
        WHERE student_id = $1
@@ -45,7 +45,7 @@ router.get('/dashboard', async (req, res) => {
        SELECT
         'voice_ai' as type,
         'Voice AI Session' as action,
-        accuracy_score::text || '%' as result,
+        COALESCE(accuracy_score::text || '%', 'In Progress') as result,
         created_at
        FROM voice_practice_sessions
        WHERE student_id = $1
@@ -57,10 +57,46 @@ router.get('/dashboard', async (req, res) => {
         submitted_at as created_at
        FROM code_submissions
        WHERE student_id = $1
+       UNION ALL
+       SELECT
+        'job' as type,
+        'Applied to Job' as action,
+        status as result,
+        applied_at as created_at
+       FROM student_job_applications
+       WHERE student_id = $1
        ORDER BY created_at DESC
-       LIMIT 5`,
+       LIMIT 10`,
       [student.id]
     )
+
+    // Count completed modules
+    const examCount = await pool.query(
+      'SELECT COUNT(*) FROM student_exams WHERE student_id = $1 AND score IS NOT NULL',
+      [student.id]
+    )
+    const voiceCount = await pool.query(
+      'SELECT COUNT(*) FROM voice_practice_sessions WHERE student_id = $1',
+      [student.id]
+    )
+    const codeCount = await pool.query(
+      'SELECT COUNT(*) FROM code_submissions WHERE student_id = $1',
+      [student.id]
+    )
+    const jobCount = await pool.query(
+      'SELECT COUNT(*) FROM student_job_applications WHERE student_id = $1',
+      [student.id]
+    )
+
+    const completedModules = [
+      Number(examCount.rows[0].count) > 0,
+      Number(voiceCount.rows[0].count) > 0,
+      Number(codeCount.rows[0].count) > 0,
+      Number(jobCount.rows[0].count) > 0,
+    ].filter(Boolean).length
+
+    const totalActivity = activityResult.rows.length
+    const overallProgress = totalActivity === 0 ? 0 : Math.min(100, totalActivity * 10)
 
     res.json({
       success: true,
@@ -73,9 +109,9 @@ router.get('/dashboard', async (req, res) => {
         totalCredits: student.total_credits,
       },
       stats: {
-        overallProgress: 65,
-        activityStreak: 7,
-        completedModules: 3,
+        overallProgress,
+        activityStreak: totalActivity,
+        completedModules,
         totalModules: 5,
       },
       recentActivity: activityResult.rows,

@@ -41,6 +41,7 @@ function getActivityIcon(type: string) {
     case 'aptitude': return Brain
     case 'voice_ai': return Mic
     case 'ycode': return Code2
+    case 'job': return Briefcase
     default: return CheckCircle
   }
 }
@@ -50,6 +51,7 @@ function getActivityColor(type: string) {
     case 'aptitude': return 'text-blue-500 bg-blue-500/10'
     case 'voice_ai': return 'text-green-500 bg-green-500/10'
     case 'ycode': return 'text-purple-500 bg-purple-500/10'
+    case 'job': return 'text-pink-500 bg-pink-500/10'
     default: return 'text-gray-500 bg-gray-500/10'
   }
 }
@@ -59,6 +61,7 @@ function getActivityHref(type: string): string {
     case 'aptitude': return '/aptitude-arena'
     case 'voice_ai': return '/voice-ai'
     case 'ycode': return '/y-codes'
+    case 'job': return '/job-hunt'
     default: return '/dashboard'
   }
 }
@@ -232,13 +235,37 @@ export default function StudentDashboard() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="rounded-xl bg-muted/50 p-4">
-                <Clock className="h-8 w-8 text-muted-foreground" />
+            <div className="py-6">
+              <div className="text-center mb-6">
+                <div className="inline-flex rounded-xl bg-primary/10 p-4 mb-3">
+                  <Target className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold">Welcome to TestAi!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You haven&apos;t completed any activities yet. Start practicing to see your progress here!
+                </p>
               </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                No activity yet. Start practicing to see your progress here!
-              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Take a Test', icon: Brain, href: `/${tenant}/student/aptitude-arena`, color: 'text-blue-500 bg-blue-500/10' },
+                  { label: 'Practice Voice AI', icon: Mic, href: `/${tenant}/student/voice-ai`, color: 'text-green-500 bg-green-500/10' },
+                  { label: 'Solve a Challenge', icon: Code2, href: `/${tenant}/student/y-codes`, color: 'text-purple-500 bg-purple-500/10' },
+                  { label: 'Apply to Jobs', icon: Briefcase, href: `/${tenant}/student/job-hunt`, color: 'text-pink-500 bg-pink-500/10' },
+                ].map((item) => (
+                  <motion.button
+                    key={item.label}
+                    onClick={() => router.push(item.href)}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 text-left hover:bg-muted/30 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className={`rounded-lg p-2 ${item.color}`}>
+                      <item.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </motion.button>
+                ))}
+              </div>
             </div>
           )}
         </div>
