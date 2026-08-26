@@ -5,6 +5,7 @@ services:
     rootDir: backend
     buildCommand: cd backend && npm install --include=dev && npm run build
     startCommand: node dist/server.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production

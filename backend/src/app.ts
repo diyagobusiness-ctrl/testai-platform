@@ -15,13 +15,13 @@ import publicRoutes from './routes/public'
 
 import { errorHandler } from './middleware/errorHandler'
 import { logger } from './utils/logger'
+import { pool } from './utils/database'
 
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// Prevent server crashes from unhandled async errors
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   logger.error('Unhandled Rejection:', { reason, promise })
 })
@@ -30,7 +30,6 @@ process.on('uncaughtException', (err: Error) => {
   logger.error('Uncaught Exception:', { error: err.message, stack: err.stack })
 })
 
-// Security middleware
 app.use(helmet())
 
 const allowedOrigins = [
@@ -51,16 +50,14 @@ app.use(cors({
   credentials: true,
 }))
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // limit each IP to 500 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 500,
   message: 'Too many requests from this IP, please try again later.',
 })
 
 app.use('/api/', limiter)
 
-// Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
@@ -70,44 +67,49 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/register', authLimiter)
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(express.json({ limit: '2mb' }))
+app.use(express.urlencoded({ extended: true, limit: '2mb' }))
 app.use(cookieParser())
 
-// Compression
 app.use(compression())
 
-// Logging
 app.use(morgan('combined', {
   stream: {
     write: (message: string) => logger.info(message.trim()),
   },
 }))
 
-// Health check
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
+// Health check - also pings the database
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1')
+    res.status(200).json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() })
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected', timestamp: new Date().toISOString() })
+  }
 })
 
-// API routes
 app.use('/api/auth', authRoutes)
 app.use('/api/super-admin', superAdminRoutes)
 app.use('/api/tenant', tenantAdminRoutes)
 app.use('/api/student', studentRoutes)
 app.use('/api', publicRoutes)
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' })
 })
 
-// Error handler
 app.use(errorHandler)
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`)
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
+  console.log(`Server running on http://localhost:${PORT}`)
 })
+
+// Server timeouts to prevent hanging connections
+server.timeout = 65000
+server.requestTimeout = 60000
+server.headersTimeout = 65000
+server.keepAliveTimeout = 5000
 
 export default app
