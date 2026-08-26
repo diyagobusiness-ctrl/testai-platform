@@ -38,10 +38,18 @@ export interface StudentStats {
   }[]
 }
 
+export interface RecentActivity {
+  type: string
+  action: string
+  result: string
+  created_at: string
+}
+
 export function useStudent() {
   const { user, isStudent, tenant } = useAuth()
   const [studentData, setStudentData] = useState<StudentData | null>(null)
   const [stats, setStats] = useState<StudentStats | null>(null)
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -69,7 +77,8 @@ export function useStudent() {
     
     try {
       const response = await api.getDashboard()
-      setStats(response.data)
+      setStats(response.data.stats)
+      setRecentActivity(response.data.recentActivity || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch student stats')
     } finally {
@@ -134,6 +143,7 @@ export function useStudent() {
   return {
     studentData,
     stats,
+    recentActivity,
     isLoading,
     error,
     fetchStudentData,
