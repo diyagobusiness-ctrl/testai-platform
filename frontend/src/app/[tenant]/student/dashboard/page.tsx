@@ -181,16 +181,16 @@ export default function StudentDashboard() {
         <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" staggerDelay={0.05}>
           {modules.map((module) => (
             <CardHover key={module.title} intensity="medium">
-              <a
-                href={module.href}
-                className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50"
+              <div
+                onClick={() => router.push(module.href)}
+                className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50 cursor-pointer"
               >
                 <div className={`mb-3 inline-flex rounded-xl p-2 ${module.bgColor}`}>
                   <module.icon className={`h-6 w-6 ${module.color}`} />
                 </div>
                 <h3 className="font-semibold">{module.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
-              </a>
+              </div>
             </CardHover>
           ))}
         </StaggerList>
