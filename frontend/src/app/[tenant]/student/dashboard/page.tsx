@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { motion } from 'motion/react'
+import { useRouter, useParams } from 'next/navigation'
 import { useStudent } from '@/hooks'
 import type { RecentActivity } from '@/hooks'
 import { CardHover, StaggerList } from '@/components/animations'
@@ -20,49 +21,6 @@ import {
   XCircle,
 } from 'lucide-react'
 
-const modules = [
-  {
-    title: 'Voice AI',
-    description: 'Practice interviews with AI',
-    icon: Mic,
-    href: '/voice-ai',
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
-  },
-  {
-    title: 'Y-Codes',
-    description: 'Solve coding challenges',
-    icon: Code2,
-    href: '/y-codes',
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-  },
-  {
-    title: 'Job Hunt',
-    description: 'Find your dream job',
-    icon: Briefcase,
-    href: '/job-hunt',
-    color: 'text-pink-500',
-    bgColor: 'bg-pink-500/10',
-  },
-  {
-    title: 'Resume Craft',
-    description: 'Build your resume',
-    icon: FileText,
-    href: '/resume-craft',
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10',
-  },
-  {
-    title: 'Aptitude Arena',
-    description: 'Test your skills',
-    icon: Brain,
-    href: '/aptitude-arena',
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
-  },
-]
-
 function formatTimeAgo(dateStr: string): string {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -71,7 +29,6 @@ function formatTimeAgo(dateStr: string): string {
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
-
   if (diffMins < 1) return 'Just now'
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
@@ -97,6 +54,15 @@ function getActivityColor(type: string) {
   }
 }
 
+function getActivityHref(type: string): string {
+  switch (type) {
+    case 'aptitude': return '/aptitude-arena'
+    case 'voice_ai': return '/voice-ai'
+    case 'ycode': return '/y-codes'
+    default: return '/dashboard'
+  }
+}
+
 function ResultBadge({ result }: { result: string }) {
   const isPassed = result === 'Passed' || (result.includes('%') && parseInt(result) >= 50)
   return (
@@ -110,7 +76,18 @@ function ResultBadge({ result }: { result: string }) {
 }
 
 export default function StudentDashboard() {
+  const router = useRouter()
+  const params = useParams()
+  const tenant = params.tenant as string
   const { studentData, stats, recentActivity, isLoading } = useStudent()
+
+  const modules = [
+    { title: 'Voice AI', description: 'Practice interviews with AI', icon: Mic, href: `/${tenant}/student/voice-ai`, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { title: 'Y-Codes', description: 'Solve coding challenges', icon: Code2, href: `/${tenant}/student/y-codes`, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+    { title: 'Job Hunt', description: 'Find your dream job', icon: Briefcase, href: `/${tenant}/student/job-hunt`, color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
+    { title: 'Resume Craft', description: 'Build your resume', icon: FileText, href: `/${tenant}/student/resume-craft`, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { title: 'Aptitude Arena', description: 'Test your skills', icon: Brain, href: `/${tenant}/student/aptitude-arena`, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+  ]
 
   if (isLoading) {
     return (
@@ -139,30 +116,10 @@ export default function StudentDashboard() {
       {/* Quick Stats */}
       <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.1}>
         {[
-          {
-            label: 'Overall Progress',
-            value: `${stats?.overallProgress || 0}%`,
-            icon: TrendingUp,
-            color: 'text-primary',
-          },
-          {
-            label: 'Activity Streak',
-            value: `${stats?.activityStreak || 0} days`,
-            icon: Zap,
-            color: 'text-warning',
-          },
-          {
-            label: 'Credits Remaining',
-            value: studentData?.currentCredits || 0,
-            icon: Award,
-            color: 'text-success',
-          },
-          {
-            label: 'Completed Modules',
-            value: `${stats?.completedModules || 0}/${stats?.totalModules || 5}`,
-            icon: Target,
-            color: 'text-accent',
-          },
+          { label: 'Overall Progress', value: `${stats?.overallProgress || 0}%`, icon: TrendingUp, color: 'text-primary' },
+          { label: 'Activity Streak', value: `${stats?.activityStreak || 0} days`, icon: Zap, color: 'text-warning' },
+          { label: 'Credits Remaining', value: studentData?.currentCredits || 0, icon: Award, color: 'text-success' },
+          { label: 'Completed Modules', value: `${stats?.completedModules || 0}/${stats?.totalModules || 5}`, icon: Target, color: 'text-accent' },
         ].map((stat) => (
           <CardHover key={stat.label} intensity="low">
             <div className="rounded-xl border border-border bg-card p-6">
@@ -182,7 +139,10 @@ export default function StudentDashboard() {
 
       {/* Daily Challenge */}
       <CardHover intensity="medium" glowColor="rgba(99, 102, 241, 0.3)">
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/5 p-6">
+        <div
+          className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/5 p-6 cursor-pointer"
+          onClick={() => router.push(`/${tenant}/student/aptitude-arena`)}
+        >
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -241,17 +201,19 @@ export default function StudentDashboard() {
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-4 text-xl font-semibold">Recent Activity</h2>
           {recentActivity.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentActivity.map((activity, index) => {
                 const Icon = getActivityIcon(activity.type)
                 const colorClass = getActivityColor(activity.type)
+                const href = getActivityHref(activity.type)
                 return (
                   <motion.div
                     key={index}
-                    className="flex items-center justify-between rounded-lg border border-border p-4"
+                    className="flex items-center justify-between rounded-lg border border-border p-4 cursor-pointer hover:bg-muted/30 transition-colors"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
+                    onClick={() => router.push(`/${tenant}/student${href}`)}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`rounded-lg p-2 ${colorClass}`}>
