@@ -13,7 +13,7 @@ import {
 import useVoiceRecognition from '@/hooks/useVoiceRecognition'
 import useSpeechSynthesis from '@/hooks/useSpeechSynthesis'
 import {
-  Upload, FileText, Mic, RotateCcw, CheckCircle, XCircle,
+  Upload, FileText, Mic, RotateCcw, XCircle,
   Bot, Pause, Play, Target, SkipForward,
 } from 'lucide-react'
 
@@ -178,6 +178,10 @@ export default function VoiceAIPage() {
   currentIdxRef.current = currentIdx
   const messagesRef = useRef(messages)
   messagesRef.current = messages
+  const transcriptRef = useRef(transcript)
+  transcriptRef.current = transcript
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTranscriptLenRef = useRef(0)
 
   const addMessage = useCallback((role: 'interviewer' | 'candidate', text: string, score?: number) => {
     const msg: ChatMessage = {
@@ -274,6 +278,8 @@ export default function VoiceAIPage() {
     } else {
       setCurrentIdx(next)
       resetTranscript()
+      lastTranscriptLenRef.current = 0
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
       setTimeout(() => {
         askQuestionFn(qs[next])
       }, 1500)
@@ -314,6 +320,7 @@ export default function VoiceAIPage() {
     stopListening()
     stopSpeaking()
     clearSafety()
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
     window.speechSynthesis?.cancel()
     setInterviewStarted(false)
     setPhase('idle')
@@ -399,25 +406,36 @@ export default function VoiceAIPage() {
     }
   }, [phase, interviewStarted, isSpeaking, isListening, transcript, processAnswerFn])
 
-  const handleSubmitAnswer = useCallback(() => {
-    stopListening()
-    clearSafety()
-    const answer = segments.filter((s) => s.isFinal).map((s) => s.text).join(' ')
-    const fallback = transcript.trim()
+  // Silence detection: auto-submit after 3 seconds of no speech
+  useEffect(() => {
+    if (phase !== 'listening' || !isListening) return
 
-    if (answer.trim()) {
-      processAnswerFn(answer.trim())
-    } else if (fallback) {
-      processAnswerFn(fallback)
-    } else {
-      addMessage('candidate', '[No answer provided]')
-      setPhaseSafe('ai-responding')
-      const skipMsg = "No worries at all! Let's move on to the next one."
-      addMessage('interviewer', skipMsg)
-      speak(skipMsg)
-      setTimeout(() => moveToNextFn(), 1500)
+    if (interimTranscript && interimTranscript.length > lastTranscriptLenRef.current) {
+      lastTranscriptLenRef.current = interimTranscript.length
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = setTimeout(() => {
+        if (phaseRef.current === 'listening' && isListening) {
+          const answer = transcriptRef.current.trim()
+          if (answer && answer.split(/\s+/).length >= 2) {
+            stopListening()
+            processAnswerFn(answer)
+          }
+        }
+      }, 3000)
+      return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current) }
     }
-  }, [stopListening, clearSafety, segments, transcript, processAnswerFn, speak, addMessage, moveToNextFn, setPhaseSafe])
+
+    silenceTimerRef.current = setTimeout(() => {
+      if (phaseRef.current === 'listening' && isListening) {
+        const answer = transcriptRef.current.trim()
+        if (answer && answer.split(/\s+/).length >= 2) {
+          stopListening()
+          processAnswerFn(answer)
+        }
+      }
+    }, 3000)
+    return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current) }
+  }, [interimTranscript, phase, isListening, stopListening, processAnswerFn])
 
   const handleSkipQuestion = useCallback(() => {
     stopListening()
@@ -434,6 +452,7 @@ export default function VoiceAIPage() {
     stopListening()
     stopSpeaking()
     clearSafety()
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
     window.speechSynthesis?.cancel()
     setInterviewStarted(false)
     setShowUpload(true)
@@ -459,6 +478,7 @@ export default function VoiceAIPage() {
     }, 1000)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
       clearSafety()
       window.speechSynthesis?.cancel()
     }
@@ -747,18 +767,6 @@ export default function VoiceAIPage() {
               >
                 {/* Floating controls overlay */}
                 <div className="absolute bottom-20 left-0 right-0 z-30 flex items-center justify-center gap-3 px-4">
-                  {phase === 'listening' && (
-                    <motion.button
-                      initial={{ scale: 0, y: 20 }}
-                      animate={{ scale: 1, y: 0 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleSubmitAnswer}
-                      className="flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-emerald-600/30"
-                    >
-                      <CheckCircle className="h-4 w-4" /> Submit Answer
-                    </motion.button>
-                  )}
                   {phase === 'listening' && (
                     <motion.button
                       initial={{ scale: 0 }}
