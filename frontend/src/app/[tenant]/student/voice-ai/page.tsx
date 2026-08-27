@@ -178,8 +178,7 @@ export default function VoiceAIPage() {
   currentIdxRef.current = currentIdx
   const messagesRef = useRef(messages)
   messagesRef.current = messages
-  const transcriptRef = useRef(transcript)
-  transcriptRef.current = transcript
+  const transcriptRef = useRef('')
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTranscriptLenRef = useRef(0)
 
@@ -233,6 +232,10 @@ export default function VoiceAIPage() {
 
   const currentQuestion = questions[currentIdx]
   const progress = questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0
+
+  useEffect(() => {
+    transcriptRef.current = transcript
+  }, [transcript])
 
   const clearSafety = useCallback(() => {
     if (safetyTimeoutRef.current) {
