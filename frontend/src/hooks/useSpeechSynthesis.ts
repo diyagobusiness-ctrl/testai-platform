@@ -156,5 +156,5 @@ export default function useSpeechSynthesis(
     }
   }, [isSupported, clearSafetyTimeout])
 
-  return { speak, stop, isSupported }
+  return { speak, stop, isSpeaking, isSupported }
 }

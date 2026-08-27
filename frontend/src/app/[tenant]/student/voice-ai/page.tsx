@@ -410,32 +410,18 @@ export default function VoiceAIPage() {
   useEffect(() => {
     if (phase !== 'listening' || !isListening) return
 
-    if (interimTranscript && interimTranscript.length > lastTranscriptLenRef.current) {
-      lastTranscriptLenRef.current = interimTranscript.length
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-      silenceTimerRef.current = setTimeout(() => {
-        if (phaseRef.current === 'listening' && isListening) {
-          const answer = transcriptRef.current.trim()
-          if (answer && answer.split(/\s+/).length >= 2) {
-            stopListening()
-            processAnswerFn(answer)
-          }
-        }
-      }, 3000)
-      return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current) }
+    const checkSilence = () => {
+      if (phaseRef.current !== 'listening') return
+      const answer = transcriptRef.current.trim()
+      if (answer && answer.split(/\s+/).length >= 2) {
+        stopListening()
+        processAnswerFn(answer)
+      }
     }
 
-    silenceTimerRef.current = setTimeout(() => {
-      if (phaseRef.current === 'listening' && isListening) {
-        const answer = transcriptRef.current.trim()
-        if (answer && answer.split(/\s+/).length >= 2) {
-          stopListening()
-          processAnswerFn(answer)
-        }
-      }
-    }, 3000)
+    silenceTimerRef.current = setTimeout(checkSilence, 3500)
     return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current) }
-  }, [interimTranscript, phase, isListening, stopListening, processAnswerFn])
+  }, [phase, isListening, stopListening, processAnswerFn])
 
   const handleSkipQuestion = useCallback(() => {
     stopListening()

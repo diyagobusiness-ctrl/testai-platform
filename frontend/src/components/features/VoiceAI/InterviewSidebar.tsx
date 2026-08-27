@@ -9,6 +9,7 @@ export interface ChatMessage {
   role: 'interviewer' | 'candidate'
   text: string
   timestamp: number
+  score?: number
 }
 
 interface InterviewSidebarProps {
