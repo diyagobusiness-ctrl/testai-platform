@@ -82,8 +82,10 @@ export default function BillingPage() {
       api.get('/api/super-admin/subscriptions').catch(() => ({ data: { plans: [] } })),
       api.get('/api/super-admin/invoices').catch(() => ({ data: { invoices: [] } })),
     ]).then(([plansRes, invoicesRes]) => {
-      setPlans(plansRes.data.plans || [])
-      setInvoices(invoicesRes.data.invoices || [])
+      const plansData = plansRes.data as Record<string, unknown>
+      const invoicesData = invoicesRes.data as Record<string, unknown>
+      setPlans((plansData?.plans as SubscriptionPlan[]) || [])
+      setInvoices((invoicesData?.invoices as Invoice[]) || [])
     }).finally(() => setLoading(false))
   }, [])
 

@@ -459,6 +459,11 @@ export default function VoiceAIPage() {
   }, [stopListening, stopSpeaking, clearSafety, resetTranscript])
 
   useEffect(() => {
+    if (!interviewStarted) {
+      if (timerRef.current) clearInterval(timerRef.current)
+      return
+    }
+
     timerRef.current = setInterval(() => {
       setRemainingTime((p) => {
         if (p <= 1) { endInterviewFn(); return 0 }
@@ -471,7 +476,7 @@ export default function VoiceAIPage() {
       clearSafety()
       window.speechSynthesis?.cancel()
     }
-  }, [endInterviewFn, clearSafety])
+  }, [interviewStarted, endInterviewFn, clearSafety])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

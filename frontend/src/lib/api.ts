@@ -51,15 +51,16 @@ class ApiClient {
           originalRequest._retry = true
           try {
             const response = await this.refreshToken()
-            if (response.data.success) {
+            const data = response.data as Record<string, unknown>
+            if (data.success) {
               if (typeof window !== 'undefined') {
                 const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}')
                 if (authStorage?.state) {
-                  authStorage.state.token = response.data.token
+                  authStorage.state.token = data.token
                   localStorage.setItem('auth-storage', JSON.stringify(authStorage))
                 }
               }
-              originalRequest.headers.Authorization = `Bearer ${response.data.token}`
+              originalRequest.headers.Authorization = `Bearer ${data.token}`
               return this.client(originalRequest)
             }
           } catch {
@@ -307,7 +308,7 @@ class ApiClient {
   }
 
   // Tenant Admin - Content Management
-  async getQuestions(params?: Record<string, unknown>) {
+  async getTenantQuestions(params?: Record<string, unknown>) {
     return this.get('/api/tenant/questions', { params })
   }
 

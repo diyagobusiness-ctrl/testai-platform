@@ -60,8 +60,12 @@ export function useStudent() {
     setError(null)
     
     try {
-      const response = await api.getStudentProfile()
-      setStudentData(response.data)
+      const response = await api.getProfile()
+      const data = response.data as Record<string, unknown>
+      const student = data?.student as StudentData | undefined
+      if (student) {
+        setStudentData(student)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch student data')
     } finally {
@@ -77,8 +81,9 @@ export function useStudent() {
     
     try {
       const response = await api.getDashboard()
-      setStats(response.data.stats)
-      setRecentActivity(response.data.recentActivity || [])
+      const data = response.data as Record<string, unknown>
+      setStats((data?.stats as StudentStats) || null)
+      setRecentActivity((data?.recentActivity as RecentActivity[]) || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch student stats')
     } finally {
@@ -94,7 +99,11 @@ export function useStudent() {
     
     try {
       const response = await api.updateProfile(data)
-      setStudentData(response.data)
+      const responseData = response.data as Record<string, unknown>
+      const student = responseData?.student as StudentData | undefined
+      if (student) {
+        setStudentData(student)
+      }
       return { success: true }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile')

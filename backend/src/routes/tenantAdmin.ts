@@ -707,7 +707,10 @@ router.get('/settings', async (req, res) => {
     const tenantId = req.user?.tenantId
 
     const result = await pool.query(
-      'SELECT name, slug, logo_url, subscription_plan, max_students FROM tenants WHERE id = $1',
+      `SELECT name, slug, logo_url, subscription_plan, max_students,
+              business_name, primary_color, accent_color, custom_domain,
+              welcome_message, footer_text, favicon_url
+       FROM tenants WHERE id = $1`,
       [tenantId]
     )
 
@@ -724,16 +727,29 @@ router.get('/settings', async (req, res) => {
 router.put('/settings', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId
-    const { name, logoUrl } = req.body
+    const {
+      name, logoUrl, businessName, primaryColor, accentColor,
+      customDomain, welcomeMessage, footerText, faviconUrl
+    } = req.body
 
     const result = await pool.query(
       `UPDATE tenants
        SET name = COALESCE($1, name),
            logo_url = COALESCE($2, logo_url),
+           business_name = COALESCE($3, business_name),
+           primary_color = COALESCE($4, primary_color),
+           accent_color = COALESCE($5, accent_color),
+           custom_domain = COALESCE($6, custom_domain),
+           welcome_message = COALESCE($7, welcome_message),
+           footer_text = COALESCE($8, footer_text),
+           favicon_url = COALESCE($9, favicon_url),
            updated_at = NOW()
-       WHERE id = $3
-       RETURNING name, slug, logo_url, subscription_plan`,
-      [name, logoUrl, tenantId]
+       WHERE id = $10
+       RETURNING name, slug, logo_url, subscription_plan, business_name,
+                 primary_color, accent_color, custom_domain, welcome_message,
+                 footer_text, favicon_url`,
+      [name, logoUrl, businessName, primaryColor, accentColor,
+       customDomain, welcomeMessage, footerText, faviconUrl, tenantId]
     )
 
     res.json({

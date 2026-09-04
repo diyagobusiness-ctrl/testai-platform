@@ -73,7 +73,7 @@ function generateQuantitativeQuestions(): Question[] {
     { title: 'Sequences', description: 'Find the sum of first 10 terms of AP: 2, 5, 8, 11...', options: ['155', '165', '175', '185'], correctAnswer: 'a', explanation: 'S10 = 10/2(2×2 + 9×3) = 5×31 = 155' },
     { title: 'Probability', description: 'What is the probability of rolling a sum of 7 with two dice?', options: ['1/6', '1/12', '5/36', '7/36'], correctAnswer: 'a', explanation: '6 favorable outcomes out of 36 = 1/6' },
   ]
-  return qs.map((q, i) => ({ ...q, id: `q-${i}`, category: 'QUANTITATIVE', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD' }))
+  return qs.map((q, i) => ({ ...q, id: `q-${i}`, category: 'QUANTITATIVE', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD', correct_answer: q.correctAnswer }))
 }
 
 function generateLogicalReasoningQuestions(): Question[] {
@@ -109,7 +109,7 @@ function generateLogicalReasoningQuestions(): Question[] {
     { title: 'Coding', description: 'If A=1, B=2... what is the sum of IDEAS?', options: ['35', '38', '40', '42'], correctAnswer: 'b', explanation: '9+4+5+1+19 = 38' },
     { title: 'Analogy', description: 'Doctor : Hospital :: Teacher : ?', options: ['Student', 'School', 'Books', 'Class'], correctAnswer: 'b', explanation: 'Doctor works in Hospital, Teacher works in School' },
   ]
-  return qs.map((q, i) => ({ ...q, id: `lr-${i}`, category: 'LOGICAL_REASONING', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD' }))
+  return qs.map((q, i) => ({ ...q, id: `lr-${i}`, category: 'LOGICAL_REASONING', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD', correct_answer: q.correctAnswer }))
 }
 
 function generateVerbalAbilityQuestions(): Question[] {
@@ -145,7 +145,7 @@ function generateVerbalAbilityQuestions(): Question[] {
     { title: 'Tone', description: '"The product is absolutely terrible!" What is the tone?', options: ['Neutral', 'Enthusiastic', 'Angry', 'Happy'], correctAnswer: 'c', explanation: '"Absolutely terrible" shows anger/frustration' },
     { title: 'Inference', description: 'If "The streets are wet" what can be inferred?', options: ['It rained', 'Someone cleaned', 'Snow melted', 'Any of these'], correctAnswer: 'd', explanation: 'Multiple possible inferences from wet streets' },
   ]
-  return qs.map((q, i) => ({ ...q, id: `va-${i}`, category: 'VERBAL_ABILITY', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD' }))
+  return qs.map((q, i) => ({ ...q, id: `va-${i}`, category: 'VERBAL_ABILITY', difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD', correct_answer: q.correctAnswer }))
 }
 
 export default function ContentPage() {
@@ -184,9 +184,12 @@ export default function ContentPage() {
         api.get('/api/tenant/coding-challenges').catch(() => ({ data: { challenges: [] } })),
         api.get('/api/tenant/job-listings').catch(() => ({ data: { jobs: [] } })),
       ])
-      setQuestions(qRes.data.questions || [])
-      setChallenges(cRes.data.challenges || [])
-      setJobs(jRes.data.jobs || [])
+      const qData = qRes.data as Record<string, unknown>
+      const cData = cRes.data as Record<string, unknown>
+      const jData = jRes.data as Record<string, unknown>
+      setQuestions((qData?.questions as Question[]) || [])
+      setChallenges((cData?.challenges as Challenge[]) || [])
+      setJobs((jData?.jobs as Job[]) || [])
     } catch (err) { console.error('Failed to fetch content:', err) }
     finally { setLoading(false) }
   }, [])
@@ -219,8 +222,9 @@ export default function ContentPage() {
 
       const key = activeTab === 'questions' ? 'questions' : activeTab === 'challenges' ? 'challenges' : 'jobs'
       const res = await api.post(endpoint, { [key]: parsed })
+      const resData = res.data as Record<string, unknown>
 
-      alert(`Imported ${res.data.imported} items. ${res.data.failed} failed.`)
+      alert(`Imported ${resData.imported} items. ${resData.failed} failed.`)
       setShowBulkModal(false)
       setBulkText('')
       setBulkPreview([])

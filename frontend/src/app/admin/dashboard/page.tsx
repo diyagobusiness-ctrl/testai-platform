@@ -82,8 +82,12 @@ export default function SuperAdminDashboard() {
     api
       .getDashboardStats()
       .then((res) => {
-        setStats(res.data.stats)
-        tenantGrowthData[7].tenants = res.data.stats.totalTenants
+        const data = res.data as Record<string, unknown>
+        const statsData = data?.stats as DashboardStats
+        setStats(statsData)
+        if (statsData) {
+          tenantGrowthData[7].tenants = statsData.totalTenants
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false))

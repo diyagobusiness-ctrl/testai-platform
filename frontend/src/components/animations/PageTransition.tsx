@@ -1,13 +1,13 @@
 'use client'
 
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, type Variants } from 'motion/react'
 import { usePathname } from 'next/navigation'
 
 interface PageTransitionProps {
   children: React.ReactNode
 }
 
-const pageVariants = {
+const pageVariants: Variants = {
   initial: {
     opacity: 0,
     y: 20,
@@ -15,18 +15,10 @@ const pageVariants = {
   animate: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.25, 0.46, 0.45, 0.94],
-    },
   },
   exit: {
     opacity: 0,
     y: -20,
-    transition: {
-      duration: 0.3,
-      ease: [0.25, 0.46, 0.45, 0.94],
-    },
   },
 }
 
@@ -41,6 +33,7 @@ export function PageTransition({ children }: PageTransitionProps) {
         initial="initial"
         animate="animate"
         exit="exit"
+        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="min-h-screen"
       >
         {children}

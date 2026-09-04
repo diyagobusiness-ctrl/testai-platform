@@ -74,7 +74,11 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true })
         try {
           const response = await api.login(email, password)
-          const { user, tenant, role, token } = response.data
+          const data = response.data as Record<string, unknown>
+          const user = data.user as User
+          const tenant = data.tenant as Tenant
+          const role = data.role as UserRole
+          const token = data.token as string
 
           set({
             user,
@@ -108,7 +112,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: async () => {
         try {
           const response = await api.refreshToken()
-          const { token } = response.data
+          const data = response.data as Record<string, unknown>
+          const token = data.token as string
           set({ token })
           return true
         } catch {
@@ -121,7 +126,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true })
         try {
           const response = await api.getProfile()
-          const { user, tenant, role } = response.data
+          const data = response.data as Record<string, unknown>
+          const user = data.user as User
+          const tenant = data.tenant as Tenant
+          const role = data.role as UserRole
           set({ user, tenant, role, isAuthenticated: true, isLoading: false })
         } catch {
           get().clearAuth()

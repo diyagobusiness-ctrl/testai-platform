@@ -66,8 +66,9 @@ export default function StudentsPage() {
       if (statusFilter !== 'all') params.status = statusFilter
 
       const res = await api.getStudents(params)
-      setStudents(res.data.students || [])
-      setPagination(res.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 })
+      const data = res.data as Record<string, unknown>
+      setStudents((data?.students as Student[]) || [])
+      setPagination((data?.pagination as Pagination) || { page: 1, limit: 10, total: 0, pages: 0 })
     } catch (err) {
       console.error('Failed to fetch students:', err)
     } finally {
@@ -84,7 +85,8 @@ export default function StudentsPage() {
     setCreateLoading(true)
     try {
       const res = await api.createStudent(createForm)
-      setTempPassword(res.data.tempPassword)
+      const data = res.data as Record<string, unknown>
+      setTempPassword(data?.tempPassword as string)
       setCreateForm({ email: '', firstName: '', lastName: '' })
       fetchStudents(1)
     } catch (err) {

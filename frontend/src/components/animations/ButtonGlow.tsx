@@ -10,6 +10,7 @@ interface ButtonGlowProps {
   size?: 'sm' | 'md' | 'lg'
   glowColor?: string
   disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
   onClick?: () => void
 }
 
@@ -34,6 +35,7 @@ export function ButtonGlow({
   size = 'md',
   glowColor,
   disabled = false,
+  type = 'button',
   onClick,
 }: ButtonGlowProps) {
   const defaultGlowColor = variant === 'primary'
@@ -65,6 +67,7 @@ export function ButtonGlow({
         damping: 17,
       }}
       disabled={disabled}
+      type={type}
       onClick={onClick}
     >
       <span className="relative z-10">{children}</span>

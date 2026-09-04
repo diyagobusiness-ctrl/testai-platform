@@ -7,7 +7,10 @@ import { logger } from '../utils/logger'
 
 export const createTenant = async (req: Request, res: Response) => {
   try {
-    const { name, slug, logoUrl, subscriptionPlan, maxStudents, adminEmail, adminFirstName, adminLastName } = req.body
+    const {
+      name, slug, logoUrl, subscriptionPlan, maxStudents, adminEmail, adminFirstName, adminLastName,
+      businessName, primaryColor, accentColor, customDomain, welcomeMessage, footerText, faviconUrl,
+    } = req.body
 
     // Check if slug already exists
     const existingTenant = await pool.query(
@@ -22,10 +25,17 @@ export const createTenant = async (req: Request, res: Response) => {
     // Create tenant
     const tenantId = uuidv4()
     const result = await pool.query(
-      `INSERT INTO tenants (id, name, slug, logo_url, subscription_plan, max_students)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO tenants (
+        id, name, slug, logo_url, subscription_plan, max_students,
+        business_name, primary_color, accent_color, custom_domain,
+        welcome_message, footer_text, favicon_url
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
-      [tenantId, name, slug, logoUrl, subscriptionPlan, maxStudents]
+      [
+        tenantId, name, slug, logoUrl, subscriptionPlan, maxStudents,
+        businessName || null, primaryColor || '#6366f1', accentColor || '#8b5cf6',
+        customDomain || null, welcomeMessage || null, footerText || null, faviconUrl || null,
+      ]
     )
 
     const tenant = result.rows[0]

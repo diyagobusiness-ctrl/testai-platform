@@ -17,7 +17,10 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     api.getDashboard()
-      .then((res) => setStats(res.data.stats || {}))
+      .then((res) => {
+        const data = res.data as Record<string, unknown>
+        setStats((data?.stats as Record<string, unknown>) || {})
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

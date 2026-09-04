@@ -55,8 +55,10 @@ export default function AccessControlPage() {
       api.get('/api/super-admin/roles').catch(() => ({ data: { roles: [] } })),
       api.get('/api/super-admin/permissions').catch(() => ({ data: { permissions: [] } })),
     ]).then(([rolesRes, permsRes]) => {
-      setRoles(rolesRes.data.roles || [])
-      setPermissions(permsRes.data.permissions || [])
+      const rolesData = rolesRes.data as Record<string, unknown>
+      const permsData = permsRes.data as Record<string, unknown>
+      setRoles((rolesData?.roles as Role[]) || [])
+      setPermissions((permsData?.permissions as Permission[]) || [])
     }).finally(() => setLoading(false))
   }, [])
 

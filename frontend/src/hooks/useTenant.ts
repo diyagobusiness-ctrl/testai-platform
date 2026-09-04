@@ -45,7 +45,8 @@ export function useTenant() {
     
     try {
       const response = await api.get(`/api/tenant/${tenant.id}`)
-      setTenantData(response.data)
+      const data = response.data as unknown as TenantData
+      setTenantData(data || null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tenant data')
     } finally {
@@ -61,7 +62,8 @@ export function useTenant() {
     
     try {
       const response = await api.get(`/api/tenant/${tenant.id}/stats`)
-      setStats(response.data)
+      const data = response.data as unknown as TenantStats
+      setStats(data || null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tenant stats')
     } finally {
@@ -77,7 +79,8 @@ export function useTenant() {
     
     try {
       const response = await api.put(`/api/tenant/${tenant.id}`, data)
-      setTenantData(response.data)
+      const responseData = response.data as unknown as TenantData
+      setTenantData(responseData || null)
       return { success: true }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update tenant')

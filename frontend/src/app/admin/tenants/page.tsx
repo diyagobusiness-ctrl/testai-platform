@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { CardHover } from '@/components/animations/CardHover'
@@ -22,6 +22,9 @@ import {
   AlertTriangle,
   Key,
   Mail,
+  Upload,
+  Image,
+  Sparkles,
 } from 'lucide-react'
 
 type TenantStatus = 'active' | 'suspended' | 'trial'
@@ -69,7 +72,15 @@ export default function TenantManagement() {
   const [planFilter, setPlanFilter] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', slug: '', subscriptionPlan: 'TRIAL', maxStudents: 50, adminEmail: '', adminFirstName: '', adminLastName: '' })
+  const [createForm, setCreateForm] = useState({
+    name: '', slug: '', subscriptionPlan: 'TRIAL', maxStudents: 50,
+    adminEmail: '', adminFirstName: '', adminLastName: '',
+    businessName: '', primaryColor: '#6366f1', accentColor: '#8b5cf6',
+    customDomain: '', welcomeMessage: '', footerText: '',
+  })
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const [createdAdmin, setCreatedAdmin] = useState<{ email: string; tempPassword: string } | null>(null)
   const [resetResult, setResetResult] = useState<{ tenantName: string; email: string; tempPassword: string } | null>(null)
   const [createAdminFor, setCreateAdminFor] = useState<Tenant | null>(null)
@@ -85,8 +96,9 @@ export default function TenantManagement() {
       if (planFilter !== 'all') params.plan = planFilter
 
       const res = await api.getTenants(params)
-      setTenants(res.data.tenants || [])
-      setPagination(res.data.pagination || { page: 1, limit: 6, total: 0, pages: 0 })
+      const data = res.data as Record<string, unknown>
+      setTenants((data?.tenants as Tenant[]) || [])
+      setPagination((data?.pagination as Pagination) || { page: 1, limit: 6, total: 0, pages: 0 })
     } catch (err) {
       console.error('Failed to fetch tenants:', err)
     } finally {
@@ -102,14 +114,26 @@ export default function TenantManagement() {
     e.preventDefault()
     setCreateLoading(true)
     try {
-      const res = await api.createTenant(createForm)
-      const { adminUser, tempPassword } = res.data
+      const res = await api.createTenant({
+        ...createForm,
+        logoUrl: logoDataUrl,
+      })
+      const data = res.data as Record<string, unknown>
+      const adminUser = data?.adminUser as { email: string } | undefined
+      const tempPassword = data?.tempPassword as string | undefined
       if (adminUser && tempPassword) {
         setCreatedAdmin({ email: adminUser.email, tempPassword })
       } else {
         setShowCreateModal(false)
       }
-      setCreateForm({ name: '', slug: '', subscriptionPlan: 'TRIAL', maxStudents: 50, adminEmail: '', adminFirstName: '', adminLastName: '' })
+      setCreateForm({
+        name: '', slug: '', subscriptionPlan: 'TRIAL', maxStudents: 50,
+        adminEmail: '', adminFirstName: '', adminLastName: '',
+        businessName: '', primaryColor: '#6366f1', accentColor: '#8b5cf6',
+        customDomain: '', welcomeMessage: '', footerText: '',
+      })
+      setLogoPreview(null)
+      setLogoDataUrl(null)
       fetchTenants(1)
     } catch (err) {
       console.error('Failed to create tenant:', err)
@@ -117,6 +141,28 @@ export default function TenantManagement() {
       setCreateLoading(false)
     }
   }
+
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo must be less than 2MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string
+      setLogoPreview(result)
+      setLogoDataUrl(result)
+    }
+    reader.readAsDataURL(file)
+  }, [])
+
+  const removeLogo = useCallback(() => {
+    setLogoPreview(null)
+    setLogoDataUrl(null)
+    if (logoInputRef.current) logoInputRef.current.value = ''
+  }, [])
 
   const handleToggleStatus = async (tenant: Tenant) => {
     try {
@@ -145,10 +191,12 @@ export default function TenantManagement() {
     if (!confirm(`Reset admin password for ${tenant.name}?`)) return
     try {
       const res = await api.resetTenantAdminPassword(tenant.id)
+      const data = res.data as Record<string, unknown>
+      const admin = data?.admin as { email: string } | undefined
       setResetResult({
         tenantName: tenant.name,
-        email: res.data.admin.email,
-        tempPassword: res.data.tempPassword,
+        email: admin?.email || '',
+        tempPassword: data?.tempPassword as string,
       })
     } catch (err) {
       console.error('Failed to reset password:', err)
@@ -161,10 +209,12 @@ export default function TenantManagement() {
     setAdminCreating(true)
     try {
       const res = await api.createTenantAdmin(createAdminFor.id, adminForm)
+      const data = res.data as Record<string, unknown>
+      const admin = data?.admin as { email: string } | undefined
       setResetResult({
         tenantName: createAdminFor.name,
-        email: res.data.admin.email,
-        tempPassword: res.data.tempPassword,
+        email: admin?.email || '',
+        tempPassword: data?.tempPassword as string,
       })
       setCreateAdminFor(null)
       setAdminForm({ email: '', firstName: '', lastName: '' })
@@ -498,7 +548,8 @@ export default function TenantManagement() {
                   </div>
                 </div>
               ) : (
-                <form className="space-y-4" onSubmit={handleCreateTenant}>
+                <form className="space-y-4 max-h-[70vh] overflow-y-auto pr-1" onSubmit={handleCreateTenant}>
+                  {/* Basic Info */}
                   <div>
                     <label className="mb-1.5 block text-sm font-medium">Organization Name</label>
                     <input
@@ -546,6 +597,172 @@ export default function TenantManagement() {
                       />
                     </div>
                   </div>
+
+                  {/* White-Label Branding */}
+                  <div className="border-t border-border pt-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium">White-Label Branding</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium">Business Name</label>
+                        <input
+                          type="text"
+                          value={createForm.businessName}
+                          onChange={(e) => setCreateForm({ ...createForm, businessName: e.target.value })}
+                          placeholder="e.g. TechCorp Inc."
+                          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium">Logo</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            ref={logoInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/svg+xml"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                          {logoPreview ? (
+                            <div className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-border bg-background">
+                              <img src={logoPreview} alt="Logo" className="h-full w-full object-contain p-1" />
+                              <button
+                                type="button"
+                                onClick={removeLogo}
+                                className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => logoInputRef.current?.click()}
+                              className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/50 hover:border-primary/50"
+                            >
+                              <Image className="h-5 w-5 text-muted-foreground" />
+                              <span className="mt-0.5 text-[10px] text-muted-foreground">Upload</span>
+                            </button>
+                          )}
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => logoInputRef.current?.click()}
+                              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                            >
+                              <Upload className="h-3 w-3" />
+                              {logoPreview ? 'Change' : 'Choose'}
+                            </button>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">PNG, JPG, SVG. Max 2MB</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium">Primary Color</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={createForm.primaryColor}
+                              onChange={(e) => setCreateForm({ ...createForm, primaryColor: e.target.value })}
+                              className="h-8 w-8 cursor-pointer rounded border border-border"
+                            />
+                            <input
+                              type="text"
+                              value={createForm.primaryColor}
+                              onChange={(e) => setCreateForm({ ...createForm, primaryColor: e.target.value })}
+                              className="w-24 rounded border border-border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div className="mt-1.5 flex gap-1">
+                            {['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#ef4444'].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                className={cn('h-4 w-4 rounded', createForm.primaryColor === c && 'ring-2 ring-offset-1 ring-offset-card')}
+                                style={{ backgroundColor: c }}
+                                onClick={() => setCreateForm({ ...createForm, primaryColor: c })}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium">Accent Color</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={createForm.accentColor}
+                              onChange={(e) => setCreateForm({ ...createForm, accentColor: e.target.value })}
+                              className="h-8 w-8 cursor-pointer rounded border border-border"
+                            />
+                            <input
+                              type="text"
+                              value={createForm.accentColor}
+                              onChange={(e) => setCreateForm({ ...createForm, accentColor: e.target.value })}
+                              className="w-24 rounded border border-border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div className="mt-1.5 flex gap-1">
+                            {['#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#22c55e'].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                className={cn('h-4 w-4 rounded', createForm.accentColor === c && 'ring-2 ring-offset-1 ring-offset-card')}
+                                style={{ backgroundColor: c }}
+                                onClick={() => setCreateForm({ ...createForm, accentColor: c })}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Color Preview */}
+                      <div className="flex gap-2 rounded-lg bg-muted/30 p-2">
+                        <div className="flex h-7 items-center rounded px-2 text-[10px] font-semibold text-white" style={{ backgroundColor: createForm.primaryColor }}>Primary</div>
+                        <div className="flex h-7 items-center rounded px-2 text-[10px] font-semibold text-white" style={{ backgroundColor: createForm.accentColor }}>Accent</div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium">Custom Domain</label>
+                        <input
+                          type="text"
+                          value={createForm.customDomain}
+                          onChange={(e) => setCreateForm({ ...createForm, customDomain: e.target.value })}
+                          placeholder="e.g. academy.techcorp.com"
+                          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium">Welcome Message</label>
+                        <textarea
+                          value={createForm.welcomeMessage}
+                          onChange={(e) => setCreateForm({ ...createForm, welcomeMessage: e.target.value })}
+                          placeholder="Welcome message shown on student login"
+                          rows={2}
+                          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium">Footer Text</label>
+                        <input
+                          type="text"
+                          value={createForm.footerText}
+                          onChange={(e) => setCreateForm({ ...createForm, footerText: e.target.value })}
+                          placeholder="© 2026 TechCorp. All rights reserved."
+                          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Admin User */}
                   <div className="border-t border-border pt-4">
                     <p className="mb-3 text-sm font-medium text-muted-foreground">Admin User (optional)</p>
                     <div>
@@ -581,13 +798,14 @@ export default function TenantManagement() {
                       </div>
                     </div>
                   </div>
+
                   <div className="flex justify-end gap-3 pt-4">
                     <motion.button
                       type="button"
                       className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setShowCreateModal(false)}
+                      onClick={() => { setShowCreateModal(false); setLogoPreview(null); setLogoDataUrl(null) }}
                     >
                       Cancel
                     </motion.button>

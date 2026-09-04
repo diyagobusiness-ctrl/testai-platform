@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 export type Theme = 'light' | 'dark' | 'system'
 export type SidebarState = 'expanded' | 'collapsed'
 
-interface UIState {
+export interface UIState {
   theme: Theme
   sidebarState: SidebarState
   isMobileMenuOpen: boolean

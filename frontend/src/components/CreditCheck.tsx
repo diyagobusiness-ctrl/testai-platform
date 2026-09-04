@@ -16,7 +16,13 @@ export default function CreditCheck({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     api.getCredits()
-      .then((res) => setCredits(res.data.credits))
+      .then((res) => {
+        const data = res.data as Record<string, unknown>
+        const credits = data?.credits as CreditInfo | undefined
+        if (credits) {
+          setCredits(credits)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

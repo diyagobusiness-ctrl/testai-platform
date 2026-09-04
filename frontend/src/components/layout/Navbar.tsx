@@ -41,6 +41,32 @@ export function Navbar() {
     }
   }
 
+  const getProfileLink = () => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return '/admin/settings'
+      case 'TENANT_ADMIN':
+        return tenant ? `/${tenant.slug}/admin/settings` : '/admin/settings'
+      case 'STUDENT':
+        return tenant ? `/${tenant.slug}/student/dashboard` : '/student/dashboard'
+      default:
+        return '/'
+    }
+  }
+
+  const getSettingsLink = () => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return '/admin/settings'
+      case 'TENANT_ADMIN':
+        return tenant ? `/${tenant.slug}/admin/settings` : '/admin/settings'
+      case 'STUDENT':
+        return tenant ? `/${tenant.slug}/student/dashboard` : '/student/dashboard'
+      default:
+        return '/'
+    }
+  }
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -141,7 +167,7 @@ export function Navbar() {
                   
                   <div className="mt-2 space-y-1">
                     <Link
-                      href="/profile"
+                      href={getProfileLink()}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
@@ -149,7 +175,7 @@ export function Navbar() {
                       Profile
                     </Link>
                     <Link
-                      href="/settings"
+                      href={getSettingsLink()}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
