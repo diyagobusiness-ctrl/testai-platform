@@ -14,8 +14,8 @@ router.get('/health', (req, res) => {
   })
 })
 
-// Get tenant by slug (for public pages)
-router.get('/tenant/:slug', async (req, res) => {
+// Get tenant branding by slug (public, no auth required)
+router.get('/tenants/branding/:slug', async (req, res) => {
   try {
     const { slug } = req.params
 

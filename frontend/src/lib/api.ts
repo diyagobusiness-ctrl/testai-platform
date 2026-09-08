@@ -349,7 +349,7 @@ class ApiClient {
   }
 
   async getPublicTenantSettings(slug: string) {
-    return this.get(`/api/public/tenant/${slug}`)
+    return this.get(`/api/tenants/branding/${slug}`)
   }
 
   async updateTenantSettings(data: Record<string, unknown>) {
