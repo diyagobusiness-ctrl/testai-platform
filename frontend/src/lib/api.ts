@@ -348,6 +348,10 @@ class ApiClient {
     return this.get('/api/tenant/settings')
   }
 
+  async getPublicTenantSettings(slug: string) {
+    return this.get(`/api/public/tenant/${slug}`)
+  }
+
   async updateTenantSettings(data: Record<string, unknown>) {
     return this.put('/api/tenant/settings', data)
   }

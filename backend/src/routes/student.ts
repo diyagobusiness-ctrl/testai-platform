@@ -128,9 +128,13 @@ router.get('/profile', async (req, res) => {
     const studentId = req.user?.userId
 
     const result = await pool.query(
-      `SELECT s.*, u.first_name, u.last_name, u.email, u.avatar_url, u.phone
+      `SELECT s.*, u.first_name, u.last_name, u.email, u.avatar_url, u.phone,
+              t.id as tenant_id, t.slug as tenant_slug, t.name as tenant_name,
+              t.logo_url, t.business_name, t.primary_color, t.accent_color,
+              t.welcome_message, t.footer_text, t.favicon_url, t.custom_domain
        FROM students s
        JOIN users u ON s.user_id = u.id
+       LEFT JOIN tenants t ON s.tenant_id = t.id
        WHERE s.user_id = $1`,
       [studentId]
     )
@@ -154,6 +158,19 @@ router.get('/profile', async (req, res) => {
         totalCredits: student.total_credits,
         enrollmentDate: student.enrollment_date,
       },
+      tenant: student.tenant_id ? {
+        id: student.tenant_id,
+        slug: student.tenant_slug,
+        name: student.tenant_name,
+        logoUrl: student.logo_url,
+        businessName: student.business_name,
+        primaryColor: student.primary_color,
+        accentColor: student.accent_color,
+        welcomeMessage: student.welcome_message,
+        footerText: student.footer_text,
+        faviconUrl: student.favicon_url,
+        customDomain: student.custom_domain,
+      } : null,
     })
   } catch (error) {
     logger.error('Get profile error:', error)

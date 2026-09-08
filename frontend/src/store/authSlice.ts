@@ -142,8 +142,13 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.getProfile()
           const data = response.data as Record<string, unknown>
           const user = data.user as User
-          const tenant = data.tenant as Tenant
-          const role = data.role as UserRole
+          const profileTenant = data.tenant as Tenant | undefined
+          const role = (data.role as UserRole) || get().role
+          // Merge: keep existing tenant data if profile doesn't include it
+          const existingTenant = get().tenant
+          const tenant = profileTenant
+            ? { ...existingTenant, ...profileTenant }
+            : existingTenant
           set({ user, tenant, role, isAuthenticated: true, isLoading: false })
           // Fetch full tenant settings (white-label)
           if (tenant?.id) {
@@ -156,12 +161,32 @@ export const useAuthStore = create<AuthState>()(
 
       fetchTenantSettings: async () => {
         try {
-          const response = await api.getTenantSettings()
-          const data = response.data as Record<string, unknown>
-          const settings = data.settings as Record<string, unknown> | undefined
-          if (!settings) return
           const currentTenant = get().tenant
           if (!currentTenant) return
+
+          let settings: Record<string, unknown> | undefined
+
+          // Try authenticated endpoint first (works for TENANT_ADMIN)
+          try {
+            const response = await api.getTenantSettings()
+            const data = response.data as Record<string, unknown>
+            settings = data.settings as Record<string, unknown> | undefined
+          } catch {
+            // Falls back to public endpoint for STUDENT role
+          }
+
+          // Fallback: public endpoint by slug
+          if (!settings && currentTenant.slug) {
+            try {
+              const response = await api.getPublicTenantSettings(currentTenant.slug)
+              const data = response.data as Record<string, unknown>
+              settings = data.tenant as Record<string, unknown> | undefined
+            } catch {
+              // Silently fail
+            }
+          }
+
+          if (!settings) return
           set({
             tenant: {
               ...currentTenant,

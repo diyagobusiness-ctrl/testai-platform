@@ -20,7 +20,9 @@ router.get('/tenant/:slug', async (req, res) => {
     const { slug } = req.params
 
     const result = await pool.query(
-      `SELECT id, name, slug, logo_url, is_active
+      `SELECT id, name, slug, logo_url, is_active,
+              business_name, primary_color, accent_color, custom_domain,
+              welcome_message, footer_text, favicon_url
        FROM tenants
        WHERE slug = $1`,
       [slug]
