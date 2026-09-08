@@ -181,6 +181,8 @@ export default function VoiceAIPage() {
   const transcriptRef = useRef('')
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTranscriptLenRef = useRef(0)
+  const processingRef = useRef(false)
+  const lastInterimLenRef = useRef(0)
 
   const addMessage = useCallback((role: 'interviewer' | 'candidate', text: string, score?: number) => {
     const msg: ChatMessage = {
@@ -197,6 +199,7 @@ export default function VoiceAIPage() {
   const onSpeechEnd = useCallback(() => {
     setPhase((prev) => {
       if (prev === 'greeting') return 'asking'
+      if (prev === 'asking') return 'listening'
       if (prev === 'ai-responding') return 'idle'
       return prev
     })
@@ -237,6 +240,18 @@ export default function VoiceAIPage() {
     transcriptRef.current = transcript
   }, [transcript])
 
+  // Reset silence timer when user is actively speaking (interim results changing)
+  useEffect(() => {
+    if (phase !== 'listening' || !isListening) return
+    if (interimTranscript && interimTranscript.length > lastInterimLenRef.current) {
+      lastInterimLenRef.current = interimTranscript.length
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current)
+        silenceTimerRef.current = null
+      }
+    }
+  }, [interimTranscript, phase, isListening])
+
   const clearSafety = useCallback(() => {
     if (safetyTimeoutRef.current) {
       clearTimeout(safetyTimeoutRef.current)
@@ -248,13 +263,14 @@ export default function VoiceAIPage() {
     clearSafety()
     const doSet = () => {
       setPhase(newPhase)
-      // Safety: if phase doesn't transition within 15s, force it
       safetyTimeoutRef.current = setTimeout(() => {
         const cur = phaseRef.current
-        if (cur === 'asking' || cur === 'greeting') {
-          setPhase('listening')
-          resetTranscript()
-          startListening()
+        if (cur === 'asking' || cur === 'greeting' || cur === 'listening') {
+          if (!processingRef.current) {
+            setPhase('listening')
+            resetTranscript()
+            startListening()
+          }
         } else if (cur === 'ai-responding') {
           setPhase('idle')
         }
@@ -290,9 +306,12 @@ export default function VoiceAIPage() {
   }, [askQuestionFn, resetTranscript])
 
   const processAnswerFn = useCallback((answer: string) => {
+    if (processingRef.current) return
     const q = questionsRef.current[currentIdxRef.current]
     if (!q) return
 
+    processingRef.current = true
+    stopListening()
     addMessage('candidate', answer)
     clearSafety()
 
@@ -308,6 +327,7 @@ export default function VoiceAIPage() {
 
     setTimeout(() => {
       resetTranscript()
+      processingRef.current = false
       if (analysis.followUp) {
         setTimeout(() => {
           setPhaseSafe('listening')
@@ -317,7 +337,7 @@ export default function VoiceAIPage() {
         moveToNextFn()
       }
     }, 500)
-  }, [speak, addMessage, clearSafety, resetTranscript, startListening, moveToNextFn, setPhaseSafe])
+  }, [speak, addMessage, clearSafety, resetTranscript, startListening, moveToNextFn, setPhaseSafe, stopListening])
 
   const endInterviewFn = useCallback(() => {
     stopListening()
@@ -325,6 +345,7 @@ export default function VoiceAIPage() {
     clearSafety()
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
     window.speechSynthesis?.cancel()
+    processingRef.current = false
     setInterviewStarted(false)
     setPhase('idle')
 
@@ -367,6 +388,8 @@ export default function VoiceAIPage() {
     setInterviewStarted(true)
     setShowUpload(false)
     startTimeRef.current = Date.now()
+    processingRef.current = false
+    greetingDoneRef.current = false
 
     const greeting = `Hi there! I'm Aria, your AI interview coach. ${fileContent ? "I've taken a look at your resume and I'm excited to dive in!" : `I'll be your interviewer for this ${MODES.find((m) => m.id === selectedMode)?.label} session.`} Don't worry, this is a safe space to practice. Take your time with each answer, and I'll give you feedback along the way. Ready? Let's get started!`
 
@@ -376,8 +399,10 @@ export default function VoiceAIPage() {
   }, [selectedMode, fileContent, speak, addMessage, setPhaseSafe])
 
   // When greeting finishes, auto-ask first question
+  const greetingDoneRef = useRef(false)
   useEffect(() => {
-    if (phase === 'greeting' && !isSpeaking) {
+    if (phase === 'greeting' && !isSpeaking && !greetingDoneRef.current) {
+      greetingDoneRef.current = true
       setTimeout(() => {
         if (questionsRef.current[0]) {
           askQuestionFn(questionsRef.current[0])
@@ -388,20 +413,22 @@ export default function VoiceAIPage() {
 
   // When asking finishes (AI stopped talking), start listening
   useEffect(() => {
-    if (phase === 'asking' && !isSpeaking) {
+    if (phase === 'listening' && !isSpeaking && !isListening && interviewStarted) {
       setTimeout(() => {
-        setPhaseSafe('listening')
         resetTranscript()
+        lastTranscriptLenRef.current = 0
+        lastInterimLenRef.current = 0
+        processingRef.current = false
         startListening()
       }, 600)
     }
-  }, [phase, isSpeaking, startListening, resetTranscript, setPhaseSafe])
+  }, [phase, isSpeaking, isListening, interviewStarted, startListening, resetTranscript])
 
   // When idle after an answer, process it
   useEffect(() => {
-    if (phase === 'idle' && interviewStarted && !isSpeaking && !isListening) {
+    if (phase === 'idle' && interviewStarted && !isSpeaking && !isListening && !processingRef.current) {
       const t = setTimeout(() => {
-        if (phaseRef.current === 'idle' && transcript.trim()) {
+        if (phaseRef.current === 'idle' && transcript.trim() && !processingRef.current) {
           processAnswerFn(transcript.trim())
         }
       }, 300)
@@ -410,26 +437,36 @@ export default function VoiceAIPage() {
   }, [phase, interviewStarted, isSpeaking, isListening, transcript, processAnswerFn])
 
   // Silence detection: auto-submit after 3 seconds of no speech
+  const resetSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
-    if (phase !== 'listening' || !isListening) return
+    if (phase !== 'listening' || !isListening) {
+      resetSilenceTimer()
+      return
+    }
 
     const checkSilence = () => {
       if (phaseRef.current !== 'listening') return
       const answer = transcriptRef.current.trim()
-      if (answer && answer.split(/\s+/).length >= 2) {
-        stopListening()
+      if (answer && answer.split(/\s+/).length >= 2 && !processingRef.current) {
         processAnswerFn(answer)
       }
     }
 
     silenceTimerRef.current = setTimeout(checkSilence, 3500)
-    return () => { if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current) }
-  }, [phase, isListening, stopListening, processAnswerFn])
+    return () => resetSilenceTimer()
+  }, [phase, isListening, processAnswerFn, resetSilenceTimer])
 
   const handleSkipQuestion = useCallback(() => {
     stopListening()
     stopSpeaking()
     clearSafety()
+    processingRef.current = false
     setPhaseSafe('ai-responding')
     const msg = "No problem! Let's continue with the next question."
     addMessage('interviewer', msg)
@@ -454,6 +491,8 @@ export default function VoiceAIPage() {
     setRemainingTime(TOTAL_TIME)
     setIsPaused(false)
     setPhase('idle')
+    processingRef.current = false
+    greetingDoneRef.current = false
     resetTranscript()
     if (timerRef.current) clearInterval(timerRef.current)
   }, [stopListening, stopSpeaking, clearSafety, resetTranscript])
