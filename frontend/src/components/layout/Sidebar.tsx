@@ -60,6 +60,11 @@ export function Sidebar() {
   const { sidebarState, toggleSidebar } = useUIStore()
   const { logout } = useAuth()
 
+  const displayName = tenant?.businessName || tenant?.name || 'Platform'
+  const logoUrl = tenant?.logoUrl
+  const primaryColor = tenant?.primaryColor
+  const footerText = tenant?.footerText
+
   const getNavItems = (): NavItem[] => {
     switch (role) {
       case 'SUPER_ADMIN':
@@ -99,8 +104,41 @@ export function Sidebar() {
       )}
       animate={{ width: isExpanded ? 256 : 80 }}
       transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+      style={primaryColor ? { '--sidebar-primary': primaryColor } as React.CSSProperties : undefined}
     >
       <div className="flex h-full flex-col">
+        {/* Brand / Logo */}
+        <div className="border-b border-border p-4">
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={displayName}
+                className="h-10 w-10 rounded-xl object-contain"
+              />
+            ) : (
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-lg"
+                style={{ backgroundColor: primaryColor || 'var(--primary)' }}
+              >
+                {displayName[0]}
+              </div>
+            )}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="whitespace-nowrap text-sm font-bold truncate"
+                >
+                  {displayName}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
         {/* Navigation Items */}
         <nav className="flex-1 space-y-2 p-4">
           {navItems.map((item) => {
@@ -124,7 +162,8 @@ export function Sidebar() {
                   {isActive && (
                     <motion.div
                       layoutId="activeTab"
-                      className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                      className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full"
+                      style={{ backgroundColor: primaryColor || 'var(--primary)' }}
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
@@ -148,6 +187,13 @@ export function Sidebar() {
             )
           })}
         </nav>
+
+        {/* Footer Text */}
+        {isExpanded && footerText && (
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{footerText}</p>
+          </div>
+        )}
 
         {/* Collapse Button */}
         <div className="border-t border-border p-4 space-y-2">

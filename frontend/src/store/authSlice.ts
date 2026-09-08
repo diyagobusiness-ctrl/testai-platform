@@ -25,6 +25,14 @@ export interface Tenant {
   maxStudents: number
   currentStudentsCount: number
   isActive: boolean
+  // White-label fields
+  businessName?: string
+  primaryColor?: string
+  accentColor?: string
+  customDomain?: string
+  welcomeMessage?: string
+  footerText?: string
+  faviconUrl?: string
 }
 
 export interface AuthState {
@@ -47,6 +55,7 @@ export interface AuthState {
   logout: () => Promise<void>
   refreshToken: () => Promise<boolean>
   fetchUser: () => Promise<void>
+  fetchTenantSettings: () => Promise<void>
 
   // Helpers
   getRedirectPath: () => string
@@ -88,6 +97,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           })
+
+          // Fetch full tenant settings (white-label)
+          if (tenant?.id) {
+            get().fetchTenantSettings()
+          }
 
           return { success: true }
         } catch (error: unknown) {
@@ -131,8 +145,39 @@ export const useAuthStore = create<AuthState>()(
           const tenant = data.tenant as Tenant
           const role = data.role as UserRole
           set({ user, tenant, role, isAuthenticated: true, isLoading: false })
+          // Fetch full tenant settings (white-label)
+          if (tenant?.id) {
+            get().fetchTenantSettings()
+          }
         } catch {
           get().clearAuth()
+        }
+      },
+
+      fetchTenantSettings: async () => {
+        try {
+          const response = await api.getTenantSettings()
+          const data = response.data as Record<string, unknown>
+          const settings = data.settings as Record<string, unknown> | undefined
+          if (!settings) return
+          const currentTenant = get().tenant
+          if (!currentTenant) return
+          set({
+            tenant: {
+              ...currentTenant,
+              name: (settings.name as string) || currentTenant.name,
+              logoUrl: (settings.logo_url as string) || currentTenant.logoUrl,
+              businessName: (settings.business_name as string) || undefined,
+              primaryColor: (settings.primary_color as string) || undefined,
+              accentColor: (settings.accent_color as string) || undefined,
+              customDomain: (settings.custom_domain as string) || undefined,
+              welcomeMessage: (settings.welcome_message as string) || undefined,
+              footerText: (settings.footer_text as string) || undefined,
+              faviconUrl: (settings.favicon_url as string) || undefined,
+            },
+          })
+        } catch {
+          // Silently fail — white-label is non-critical
         }
       },
 

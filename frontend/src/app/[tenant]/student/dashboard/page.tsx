@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { motion } from 'motion/react'
 import { useRouter, useParams } from 'next/navigation'
-import { useStudent } from '@/hooks'
+import { useStudent, useAuth } from '@/hooks'
 import type { RecentActivity } from '@/hooks'
 import { CardHover, StaggerList } from '@/components/animations'
 import {
@@ -83,6 +83,9 @@ export default function StudentDashboard() {
   const params = useParams()
   const tenant = params.tenant as string
   const { studentData, stats, recentActivity, isLoading } = useStudent()
+  const { tenant: tenantData } = useAuth()
+
+  const welcomeMessage = tenantData?.welcomeMessage
 
   const modules = [
     { title: 'Voice AI', description: 'Practice interviews with AI', icon: Mic, href: `/${tenant}/student/voice-ai`, color: 'text-green-500', bgColor: 'bg-green-500/10' },
@@ -111,9 +114,13 @@ export default function StudentDashboard() {
         <h1 className="text-3xl font-bold">
           Welcome back, <span className="gradient-text">{studentData?.user?.firstName || 'Student'}</span>!
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Continue your learning journey. You&apos;re doing great!
-        </p>
+        {welcomeMessage ? (
+          <p className="mt-2 text-muted-foreground">{welcomeMessage}</p>
+        ) : (
+          <p className="mt-2 text-muted-foreground">
+            Continue your learning journey. You&apos;re doing great!
+          </p>
+        )}
       </motion.div>
 
       {/* Quick Stats */}

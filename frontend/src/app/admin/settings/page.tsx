@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { CardHover } from '@/components/animations/CardHover'
 import { api } from '@/lib/api'
 import { useAuth } from '@/hooks'
+import { useAuthStore } from '@/store'
 import {
   Save,
   Upload,
@@ -173,6 +174,8 @@ export default function SettingsPage() {
         })
       }
       setSaved(true)
+      // Re-fetch tenant settings so sidebar/navbar update live
+      useAuthStore.getState().fetchTenantSettings()
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
       console.error('Failed to save settings:', err)

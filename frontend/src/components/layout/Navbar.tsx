@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { useAuth } from '@/hooks'
+import { useAuth, useTenantTheme } from '@/hooks'
 import { useUIStore } from '@/store'
 import { cn } from '@/lib/utils'
 import {
@@ -25,8 +25,13 @@ export function Navbar() {
   const router = useRouter()
   const { user, tenant, role, logout } = useAuth()
   const { theme, toggleTheme } = useUIStore()
+  useTenantTheme()
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isProfileOpen, setProfileOpen] = useState(false)
+
+  const displayName = tenant?.businessName || tenant?.name || 'TestAi'
+  const logoUrl = tenant?.logoUrl
+  const primaryColor = tenant?.primaryColor
 
   const getDashboardLink = () => {
     switch (role) {
@@ -72,15 +77,20 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href={getDashboardLink()} className="flex items-center gap-2">
-          <motion.div
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary"
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span className="text-xl font-bold text-white">T</span>
-          </motion.div>
+          {logoUrl ? (
+            <img src={logoUrl} alt={displayName} className="h-10 w-10 rounded-xl object-contain" />
+          ) : (
+            <motion.div
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-lg"
+              style={{ backgroundColor: primaryColor || 'var(--primary)' }}
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {displayName[0]}
+            </motion.div>
+          )}
           <span className="hidden text-xl font-bold sm:block gradient-text">
-            TestAi
+            {displayName}
           </span>
         </Link>
 
