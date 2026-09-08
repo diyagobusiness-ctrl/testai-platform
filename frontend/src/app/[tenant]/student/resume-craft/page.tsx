@@ -30,13 +30,18 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  ArrowLeft,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks'
 
 function generateId() {
   return Math.random().toString(36).substring(2, 11)
 }
 
 export default function ResumeCraftPage() {
+  const router = useRouter()
+  const { tenant } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
   const [showPreview, setShowPreview] = useState(true)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -259,6 +264,14 @@ export default function ResumeCraftPage() {
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push(`/${tenant}/student/dashboard`)}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+              </motion.button>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>

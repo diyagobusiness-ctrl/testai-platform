@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Brain, Timer, Trophy, BarChart3, ArrowLeft, ArrowRight, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks'
 import {
   QuestionCard,
   QuestionPalette,
@@ -64,6 +66,69 @@ const mockQuestions = [
     difficulty: 'MEDIUM',
     category: 'QUANTITATIVE',
   },
+  {
+    id: '6',
+    text: 'A is taller than B. C is shorter than D. B is taller than D. Who is the tallest?',
+    options: { a: 'A', b: 'B', c: 'C', d: 'D' },
+    correctAnswer: 'a',
+    explanation: 'A > B, B > D, D > C. So A is the tallest.',
+    difficulty: 'EASY',
+    category: 'LOGICAL_REASONING',
+  },
+  {
+    id: '7',
+    text: 'If all roses are flowers, and some flowers fade quickly, which statement must be true?',
+    options: { a: 'All roses fade quickly', b: 'Some roses may fade quickly', c: 'No roses fade quickly', d: 'Roses never fade' },
+    correctAnswer: 'b',
+    explanation: 'Some flowers fade quickly, and roses are flowers, so some roses may fade quickly.',
+    difficulty: 'MEDIUM',
+    category: 'LOGICAL_REASONING',
+  },
+  {
+    id: '8',
+    text: 'Choose the antonym of "Benevolent":',
+    options: { a: 'Kind', b: 'Generous', c: 'Malevolent', d: 'Friendly' },
+    correctAnswer: 'c',
+    explanation: 'Benevolent means well-meaning and kindly. Malevolent means having or showing a wish to do evil.',
+    difficulty: 'EASY',
+    category: 'VERBAL_ABILITY',
+  },
+  {
+    id: '9',
+    text: 'Identify the correctly spelled word:',
+    options: { a: 'Occurrence', b: 'Occurance', c: 'Ocurrence', d: 'Occurrance' },
+    correctAnswer: 'a',
+    explanation: 'The correct spelling is "Occurrence" (double r, single c).',
+    difficulty: 'MEDIUM',
+    category: 'VERBAL_ABILITY',
+  },
+  {
+    id: '10',
+    text: 'In a certain code, COMPUTER is written as RFUVQNPC. How is MEDICINE written in that code?',
+    options: { a: 'EOJDJEFM', b: 'FOJDJDFN', c: 'FDJDJEFN', d: 'EOJEIDFM' },
+    correctAnswer: 'a',
+    explanation: 'Each letter is shifted: M→E, E→O, D→J, I→D, C→J, I→E, N→F, E→M. Pattern: reverse order from end.',
+    difficulty: 'HARD',
+    category: 'LOGICAL_REASONING',
+  },
+  {
+    id: '11',
+    text: 'The word "QUIXOTIC" is closest in meaning to:',
+    options: { a: 'Practical', b: 'Idealistic', c: 'Lazy', d: 'Clever' },
+    correctAnswer: 'b',
+    explanation: 'Quixotic means exceedingly idealistic, unrealistic, and impractical.',
+    difficulty: 'MEDIUM',
+    category: 'VERBAL_ABILITY',
+  },
+  {
+    id: '12',
+    text: 'A clock shows 3:15. What is the angle between the hour and minute hands?',
+    options: { a: '0 degrees', b: '7.5 degrees', c: '15 degrees', d: '22.5 degrees' },
+    correctAnswer: 'b',
+    explanation: 'At 3:15, the minute hand is at 90 degrees. The hour hand moves 0.5 degrees per minute, so at 3:15 it is at 90 + 7.5 = 97.5 degrees. Angle = 97.5 - 90 = 7.5 degrees.',
+    difficulty: 'MEDIUM',
+    category: 'QUANTITATIVE',
+  },
 ]
 
 const categories = [
@@ -73,6 +138,8 @@ const categories = [
 ]
 
 export default function AptitudeArenaPage() {
+  const router = useRouter()
+  const { tenant } = useAuth()
   const [view, setView] = useState<View>('SELECT')
   const [selectedCategory, setSelectedCategory] = useState<Category>('QUANTITATIVE')
   const [mode, setMode] = useState<Mode>('PRACTICE')
@@ -123,26 +190,46 @@ export default function AptitudeArenaPage() {
     handleSubmit()
   }
 
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) setCurrentQuestion(currentQuestion + 1)
-  }
+  const handleNext = useCallback(() => {
+    setCurrentQuestion((prev) => {
+      if (prev < questions.length - 1) return prev + 1
+      return prev
+    })
+  }, [questions.length])
 
-  const handlePrev = () => {
-    if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1)
+  const handlePrev = useCallback(() => {
+    setCurrentQuestion((prev) => {
+      if (prev > 0) return prev - 1
+      return prev
+    })
+  }, [])
+
+  const handleBack = () => {
+    router.push(`/${tenant}/student/dashboard`)
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-3">
-            <Brain className="h-6 w-6 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-primary/10 p-3">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Aptitude Arena</h1>
+              <p className="text-muted-foreground">Practice quantitative, logical reasoning, and verbal ability</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Aptitude Arena</h1>
-            <p className="text-muted-foreground">Practice quantitative, logical reasoning, and verbal ability</p>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleBack}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </motion.button>
         </div>
       </motion.div>
 

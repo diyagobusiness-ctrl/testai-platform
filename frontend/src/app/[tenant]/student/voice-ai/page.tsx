@@ -14,8 +14,10 @@ import useVoiceRecognition from '@/hooks/useVoiceRecognition'
 import useSpeechSynthesis from '@/hooks/useSpeechSynthesis'
 import {
   Upload, FileText, Mic, RotateCcw, XCircle,
-  Bot, Pause, Play, Target, SkipForward,
+  Bot, Pause, Play, Target, SkipForward, ArrowLeft,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks'
 
 type PracticeMode = 'free' | 'mock-hr' | 'mock-technical' | 'mock-behavioral'
 
@@ -148,6 +150,8 @@ function analyzeAnswer(answer: string, question: InterviewQuestion) {
 }
 
 export default function VoiceAIPage() {
+  const router = useRouter()
+  const { tenant } = useAuth()
   const [selectedMode, setSelectedMode] = useState<PracticeMode>('free')
   const [interviewStarted, setInterviewStarted] = useState(false)
   const [showUpload, setShowUpload] = useState(true)
@@ -539,8 +543,19 @@ export default function VoiceAIPage() {
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
       <div className="max-w-[1600px] mx-auto px-4 py-4">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-4">
-          <h1 className="text-2xl font-bold text-white mb-1">AI Interview Practice</h1>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+          <div className="flex items-center justify-between">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push(`/${tenant}/student/dashboard`)}
+              className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+            </motion.button>
+            <h1 className="text-2xl font-bold text-white">AI Interview Practice</h1>
+            <div className="w-[160px]" />
+          </div>
           <p className="text-sm text-zinc-400">
             {interviewStarted
               ? `Question ${currentIdx + 1} of ${questions.length} • ${currentQuestion?.category || ''}`
@@ -931,10 +946,16 @@ export default function VoiceAIPage() {
                     <span>{Math.floor((TOTAL_TIME - remainingTime) / 60)}m {(TOTAL_TIME - remainingTime) % 60}s</span>
                   </div>
                 </div>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={resetInterview}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-medium text-white">
-                  <RotateCcw className="h-4 w-4" /> New Interview
-                </motion.button>
+                <div className="flex gap-3">
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowFeedback(false)}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10 transition">
+                    <XCircle className="h-4 w-4" /> Close
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={resetInterview}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-medium text-white">
+                    <RotateCcw className="h-4 w-4" /> New Interview
+                  </motion.button>
+                </div>
               </motion.div>
             </motion.div>
           )}

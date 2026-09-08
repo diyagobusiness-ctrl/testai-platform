@@ -223,3 +223,19 @@ body {
 .float {
   animation: float 3s ease-in-out infinite;
 }
+
+/* Connection Pulse Animation */
+@keyframes pulse-connection {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+.pulse-connection {
+  animation: pulse-connection 4s ease-in-out infinite;
+}

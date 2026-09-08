@@ -19,7 +19,10 @@ import {
   ChevronRight,
   Code2,
   List,
+  ArrowLeft,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks'
 
 interface TestCase {
   id: number
@@ -167,6 +170,8 @@ const sampleChallenges: Challenge[] = [
 ]
 
 export default function YCodesPage() {
+  const router = useRouter()
+  const { tenant } = useAuth()
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge>(sampleChallenges[0])
   const [language, setLanguage] = useState<Language>('javascript')
   const [code, setCode] = useState('')
@@ -246,6 +251,14 @@ export default function YCodesPage() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push(`/${tenant}/student/dashboard`)}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </motion.button>
           <div className="rounded-xl bg-primary/10 p-2">
             <Code2 className="h-6 w-6 text-primary" />
           </div>

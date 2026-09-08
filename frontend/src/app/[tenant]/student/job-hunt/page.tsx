@@ -11,7 +11,10 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks'
 import {
   JobCard,
   JobDetailModal,
@@ -148,6 +151,8 @@ const tabs: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
 ]
 
 export default function JobHuntPage() {
+  const router = useRouter()
+  const { tenant } = useAuth()
   const [activeTab, setActiveTab] = useState<ActiveTab>('jobs')
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -296,13 +301,24 @@ export default function JobHuntPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-3xl font-bold">
-          <span className="gradient-text">Job Hunt</span>
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Find your dream job and track your applications
-        </p>
+        <div>
+          <h1 className="text-3xl font-bold">
+            <span className="gradient-text">Job Hunt</span>
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Find your dream job and track your applications
+          </p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => router.push(`/${tenant}/student/dashboard`)}
+          className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+        </motion.button>
       </motion.div>
 
       {/* Tab Navigation */}
