@@ -135,8 +135,10 @@ export default function TenantManagement() {
       setLogoPreview(null)
       setLogoDataUrl(null)
       fetchTenants(1)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to create tenant:', err)
+      const message = err instanceof Error ? err.message : 'Failed to create tenant. Please check all fields.'
+      alert(message)
     } finally {
       setCreateLoading(false)
     }
@@ -145,8 +147,8 @@ export default function TenantManagement() {
   const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Logo must be less than 2MB')
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert('Logo must be less than 1.5MB (base64 encoding increases file size)')
       return
     }
     const reader = new FileReader()
@@ -555,7 +557,14 @@ export default function TenantManagement() {
                     <input
                       type="text"
                       value={createForm.name}
-                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                      onChange={(e) => {
+                        const name = e.target.value
+                        setCreateForm({
+                          ...createForm,
+                          name,
+                          slug: createForm.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                        })
+                      }}
                       placeholder="e.g. TechCorp Academy"
                       required
                       className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -566,8 +575,8 @@ export default function TenantManagement() {
                     <input
                       type="text"
                       value={createForm.slug}
-                      onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
-                      placeholder="e.g. techcorp"
+                      onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-') })}
+                      placeholder="auto-generated from name"
                       required
                       className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />

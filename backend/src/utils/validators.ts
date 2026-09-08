@@ -36,7 +36,7 @@ export const tenantSchema = {
     body: z.object({
       name: z.string().min(1, 'Tenant name is required'),
       slug: z.string().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
-      logoUrl: z.string().url('Invalid URL').optional(),
+      logoUrl: z.string().optional(),
       subscriptionPlan: z.enum(['TRIAL', 'BASIC', 'PREMIUM', 'ENTERPRISE']).default('TRIAL'),
       maxStudents: z.number().min(1).default(50),
       businessName: z.string().optional(),
@@ -55,7 +55,7 @@ export const tenantSchema = {
     }),
     body: z.object({
       name: z.string().min(1).optional(),
-      logoUrl: z.string().url().optional(),
+      logoUrl: z.string().optional(),
       subscriptionPlan: z.enum(['TRIAL', 'BASIC', 'PREMIUM', 'ENTERPRISE']).optional(),
       maxStudents: z.number().min(1).optional(),
       businessName: z.string().optional(),
