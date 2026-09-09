@@ -352,6 +352,10 @@ class ApiClient {
     return this.get(`/api/tenants/branding/${slug}`)
   }
 
+  async deductCredits(amount: number, reason: string) {
+    return this.post('/api/student/credits/deduct', { amount, reason })
+  }
+
   async updateTenantSettings(data: Record<string, unknown>) {
     return this.put('/api/tenant/settings', data)
   }

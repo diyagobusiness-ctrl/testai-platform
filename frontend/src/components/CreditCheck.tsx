@@ -15,16 +15,24 @@ export default function CreditCheck({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getCredits()
-      .then((res) => {
-        const data = res.data as Record<string, unknown>
-        const credits = data?.credits as CreditInfo | undefined
-        if (credits) {
-          setCredits(credits)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    const fetchCredits = () => {
+      api.getCredits()
+        .then((res) => {
+          const data = res.data as Record<string, unknown>
+          const credits = data?.credits as CreditInfo | undefined
+          if (credits) {
+            setCredits(credits)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+
+    fetchCredits()
+
+    const handleCreditUpdate = () => fetchCredits()
+    window.addEventListener('credits-updated', handleCreditUpdate)
+    return () => window.removeEventListener('credits-updated', handleCreditUpdate)
   }, [])
 
   if (loading) {

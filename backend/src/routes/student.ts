@@ -394,6 +394,40 @@ router.get('/credits', async (req, res) => {
   }
 })
 
+router.post('/credits/deduct', async (req, res) => {
+  try {
+    const studentId = req.user?.userId
+    const { amount, reason } = req.body
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid amount' })
+    }
+
+    const result = await pool.query(
+      `UPDATE students
+       SET current_credits = current_credits - $1,
+           updated_at = NOW()
+       WHERE user_id = $2 AND current_credits >= $1
+       RETURNING current_credits, total_credits`,
+      [amount, studentId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'Insufficient credits' })
+    }
+
+    res.json({
+      success: true,
+      credits: result.rows[0],
+      deducted: amount,
+      reason,
+    })
+  } catch (error) {
+    logger.error('Deduct credits error:', error)
+    throw error
+  }
+})
+
 // Voice AI Sessions
 router.get('/voice/sessions', async (req, res) => {
   try {

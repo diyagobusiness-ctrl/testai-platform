@@ -123,6 +123,30 @@ export default function ResumeCraftPage() {
     
     try {
       const jsPDF = (await import('jspdf')).default
+      const { templates } = await import('@/components/features/ResumeCraft/TemplateSelector')
+
+      // Deduct credits first
+      try {
+        await api.deductCredits(25, 'Resume PDF download')
+      } catch (creditError) {
+        alert('Insufficient credits. Please contact your admin.')
+        setIsDownloading(false)
+        return
+      }
+
+      // Get template colors
+      const template = templates.find((t) => t.id === selectedTemplate) || templates[0]
+      const { primary, secondary } = template.colors
+
+      // Convert hex to RGB
+      const hexToRgb = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16)
+        const g = parseInt(hex.slice(3, 5), 16)
+        const b = parseInt(hex.slice(5, 7), 16)
+        return { r, g, b }
+      }
+      const primaryRgb = hexToRgb(primary)
+      const secondaryRgb = hexToRgb(secondary)
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -136,11 +160,22 @@ export default function ResumeCraftPage() {
       const contentWidth = pageWidth - margin * 2
       const lineHeight = 16
 
+      const hexColor = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16)
+        const g = parseInt(hex.slice(3, 5), 16)
+        const b = parseInt(hex.slice(5, 7), 16)
+        return [r, g, b] as [number, number, number]
+      }
+
       const addText = (text: string, fontSize: number, isBold = false, color?: string) => {
         pdf.setFontSize(fontSize)
         pdf.setFont('helvetica', isBold ? 'bold' : 'normal')
-        if (color) pdf.setTextColor(color)
-        else pdf.setTextColor(30, 30, 30)
+        if (color) {
+          const c = hexToRgb(color)
+          pdf.setTextColor(c.r, c.g, c.b)
+        } else {
+          pdf.setTextColor(40, 40, 40)
+        }
 
         const lines = pdf.splitTextToSize(text, contentWidth)
         lines.forEach((line: string) => {
@@ -155,14 +190,15 @@ export default function ResumeCraftPage() {
 
       const addSection = (title: string) => {
         if (y > 720) { pdf.addPage(); y = margin }
-        y += 8
-        pdf.setFillColor(99, 102, 241)
-        pdf.rect(margin, y - 10, contentWidth, 1.5, 'F')
-        pdf.setFontSize(13)
+        y += 10
+        // Colored accent bar
+        pdf.setFillColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
+        pdf.rect(margin, y - 12, contentWidth, 18, 'F')
+        pdf.setFontSize(11)
         pdf.setFont('helvetica', 'bold')
-        pdf.setTextColor(99, 102, 241)
-        pdf.text(title.toUpperCase(), margin, y)
-        y += 18
+        pdf.setTextColor(255, 255, 255)
+        pdf.text(title.toUpperCase(), margin + 4, y)
+        y += 16
       }
 
       const addLine = () => {
@@ -172,13 +208,21 @@ export default function ResumeCraftPage() {
         pdf.setTextColor(60, 60, 60)
       }
 
-      // Header - Name
-      pdf.setFontSize(24)
-      pdf.setFont('helvetica', 'bold')
-      pdf.setTextColor(30, 30, 30)
+      // === HEADER ===
+      // Name with colored background bar
       const name = `${personalInfo.firstName || ''} ${personalInfo.lastName || ''}`.trim() || 'Your Name'
-      pdf.text(name, pageWidth / 2, y, { align: 'center' })
-      y += 24
+      pdf.setFillColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
+      pdf.rect(0, 0, pageWidth, 80, 'F')
+      // Secondary stripe
+      pdf.setFillColor(secondaryRgb.r, secondaryRgb.g, secondaryRgb.b)
+      pdf.rect(0, 80, pageWidth, 4, 'F')
+
+      pdf.setFontSize(26)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(255, 255, 255)
+      pdf.text(name, pageWidth / 2, 45, { align: 'center' })
+
+      y = 95
 
       // Contact info
       const contacts: string[] = []
@@ -209,14 +253,15 @@ export default function ResumeCraftPage() {
           if (y > 720) { pdf.addPage(); y = margin }
           pdf.setFontSize(11)
           pdf.setFont('helvetica', 'bold')
-          pdf.setTextColor(30, 30, 30)
+          pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
           pdf.text(exp.position || 'Position', margin, y)
           pdf.setFont('helvetica', 'normal')
-          pdf.setTextColor(100, 100, 100)
+          pdf.setTextColor(130, 130, 130)
           const dateStr = `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`
           pdf.text(dateStr, pageWidth - margin, y, { align: 'right' })
           y += 14
           pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
           pdf.setTextColor(60, 60, 60)
           pdf.text(exp.company || '', margin, y)
           y += 14
@@ -234,17 +279,19 @@ export default function ResumeCraftPage() {
           if (y > 720) { pdf.addPage(); y = margin }
           pdf.setFontSize(11)
           pdf.setFont('helvetica', 'bold')
-          pdf.setTextColor(30, 30, 30)
+          pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
           pdf.text(edu.degree || 'Degree', margin, y)
           pdf.setFont('helvetica', 'normal')
-          pdf.setTextColor(100, 100, 100)
+          pdf.setTextColor(130, 130, 130)
           const dateStr = `${edu.startDate || ''} - ${edu.endDate || ''}`
           pdf.text(dateStr, pageWidth - margin, y, { align: 'right' })
           y += 14
           pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
           pdf.setTextColor(60, 60, 60)
           pdf.text(edu.school || '', margin, y)
           if (edu.gpa) {
+            pdf.setFont('helvetica', 'normal')
             pdf.text(`GPA: ${edu.gpa}`, pageWidth - margin, y, { align: 'right' })
           }
           y += 16
@@ -255,7 +302,7 @@ export default function ResumeCraftPage() {
       if (skills.length > 0 && skills.some(s => s.name)) {
         addSection('Skills')
         const skillNames = skills.filter(s => s.name).map(s => s.name)
-        addText(skillNames.join(', '), 10)
+        addText(skillNames.join('  •  '), 10)
       }
 
       // Projects
@@ -265,7 +312,7 @@ export default function ResumeCraftPage() {
           if (y > 720) { pdf.addPage(); y = margin }
           pdf.setFontSize(11)
           pdf.setFont('helvetica', 'bold')
-          pdf.setTextColor(30, 30, 30)
+          pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
           pdf.text(proj.name || 'Project', margin, y)
           y += 14
           if (proj.description) {
@@ -274,7 +321,7 @@ export default function ResumeCraftPage() {
           if (proj.techStack) {
             pdf.setFontSize(9)
             pdf.setFont('helvetica', 'italic')
-            pdf.setTextColor(100, 100, 100)
+            pdf.setTextColor(130, 130, 130)
             pdf.text(`Tech: ${proj.techStack}`, margin, y)
             y += 14
           }
@@ -290,7 +337,7 @@ export default function ResumeCraftPage() {
           addLine()
           pdf.setFontSize(10)
           pdf.setFont('helvetica', 'bold')
-          pdf.setTextColor(30, 30, 30)
+          pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
           pdf.text(cert.name || '', margin, y)
           y += 13
           pdf.setFont('helvetica', 'normal')
@@ -304,7 +351,24 @@ export default function ResumeCraftPage() {
         })
       }
 
+      // Footer line
+      pdf.setFillColor(primaryRgb.r, primaryRgb.g, primaryRgb.b)
+      pdf.rect(0, 778, pageWidth, 2, 'F')
+
       pdf.save(`${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`)
+
+      // Refresh credits display
+      try {
+        const creditRes = await api.getCredits()
+        const creditData = creditRes.data as Record<string, unknown>
+        const credits = creditData?.credits as { current_credits: number; total_credits: number } | undefined
+        if (credits) {
+          // Update CreditCheck component by triggering a re-fetch
+          window.dispatchEvent(new CustomEvent('credits-updated', { detail: credits }))
+        }
+      } catch {
+        // Silently fail on credit refresh
+      }
     } catch (error) {
       console.error('PDF download failed:', error)
       alert('Failed to generate PDF. Please try again.')
