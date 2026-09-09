@@ -127,12 +127,10 @@ export default function ResumeCraftPage() {
 
       const tempContainer = document.createElement('div')
       tempContainer.style.position = 'absolute'
-      tempContainer.style.left = '0'
+      tempContainer.style.left = '-9999px'
       tempContainer.style.top = '0'
       tempContainer.style.width = '612px'
       tempContainer.style.zIndex = '-1'
-      tempContainer.style.opacity = '0'
-      tempContainer.style.pointerEvents = 'none'
       tempContainer.style.background = 'white'
       document.body.appendChild(tempContainer)
 
@@ -154,16 +152,17 @@ export default function ResumeCraftPage() {
             selectedTemplate,
           })
         )
-        setTimeout(resolve, 100)
+        setTimeout(resolve, 500)
       })
 
-      await new Promise((r) => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, 500))
 
       const canvas = await html2canvas(tempContainer, {
         scale: 2,
         useCORS: true,
         logging: false,
         allowTaint: true,
+        backgroundColor: '#ffffff',
       })
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95)
@@ -182,6 +181,7 @@ export default function ResumeCraftPage() {
       document.body.removeChild(tempContainer)
     } catch (error) {
       console.error('PDF download failed:', error)
+      alert('Failed to generate PDF. Please try again.')
     } finally {
       setIsDownloading(false)
     }
