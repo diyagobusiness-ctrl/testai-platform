@@ -123,51 +123,6 @@ export default function ResumeCraftPage() {
     
     try {
       const jsPDF = (await import('jspdf')).default
-      const html2canvas = (await import('html2canvas')).default
-
-      const tempContainer = document.createElement('div')
-      tempContainer.style.position = 'absolute'
-      tempContainer.style.left = '-9999px'
-      tempContainer.style.top = '0'
-      tempContainer.style.width = '612px'
-      tempContainer.style.zIndex = '-1'
-      tempContainer.style.background = 'white'
-      document.body.appendChild(tempContainer)
-
-      const { createRoot } = await import('react-dom/client')
-      const { createElement } = await import('react')
-      const { default: Preview } = await import('@/components/features/ResumeCraft/ResumePreview')
-
-      await new Promise<void>((resolve) => {
-        const root = createRoot(tempContainer)
-        root.render(
-          createElement(Preview, {
-            personalInfo,
-            summary,
-            education,
-            experience,
-            skills,
-            projects,
-            certifications,
-            selectedTemplate,
-          })
-        )
-        setTimeout(resolve, 500)
-      })
-
-      await new Promise((r) => setTimeout(r, 500))
-
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-      })
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95)
-      const imgWidth = 612
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -175,10 +130,181 @@ export default function ResumeCraftPage() {
         format: [612, 792],
       })
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
-      pdf.save(`${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`)
+      const margin = 40
+      let y = margin
+      const pageWidth = 612
+      const contentWidth = pageWidth - margin * 2
+      const lineHeight = 16
 
-      document.body.removeChild(tempContainer)
+      const addText = (text: string, fontSize: number, isBold = false, color?: string) => {
+        pdf.setFontSize(fontSize)
+        pdf.setFont('helvetica', isBold ? 'bold' : 'normal')
+        if (color) pdf.setTextColor(color)
+        else pdf.setTextColor(30, 30, 30)
+
+        const lines = pdf.splitTextToSize(text, contentWidth)
+        lines.forEach((line: string) => {
+          if (y > 750) {
+            pdf.addPage()
+            y = margin
+          }
+          pdf.text(line, margin, y)
+          y += lineHeight
+        })
+      }
+
+      const addSection = (title: string) => {
+        if (y > 720) { pdf.addPage(); y = margin }
+        y += 8
+        pdf.setFillColor(99, 102, 241)
+        pdf.rect(margin, y - 10, contentWidth, 1.5, 'F')
+        pdf.setFontSize(13)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(99, 102, 241)
+        pdf.text(title.toUpperCase(), margin, y)
+        y += 18
+      }
+
+      const addLine = () => {
+        if (y > 750) { pdf.addPage(); y = margin }
+        pdf.setFontSize(10)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(60, 60, 60)
+      }
+
+      // Header - Name
+      pdf.setFontSize(24)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(30, 30, 30)
+      const name = `${personalInfo.firstName || ''} ${personalInfo.lastName || ''}`.trim() || 'Your Name'
+      pdf.text(name, pageWidth / 2, y, { align: 'center' })
+      y += 24
+
+      // Contact info
+      const contacts: string[] = []
+      if (personalInfo.email) contacts.push(personalInfo.email)
+      if (personalInfo.phone) contacts.push(personalInfo.phone)
+      if (personalInfo.location) contacts.push(personalInfo.location)
+      if (personalInfo.linkedin) contacts.push(personalInfo.linkedin)
+      if (personalInfo.website) contacts.push(personalInfo.website)
+      if (contacts.length > 0) {
+        pdf.setFontSize(9)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(100, 100, 100)
+        pdf.text(contacts.join('  |  '), pageWidth / 2, y, { align: 'center' })
+        y += 18
+      }
+
+      // Summary
+      if (summary) {
+        addSection('Professional Summary')
+        addLine()
+        addText(summary, 10)
+      }
+
+      // Experience
+      if (experience.length > 0 && experience.some(e => e.company || e.position)) {
+        addSection('Work Experience')
+        experience.forEach((exp) => {
+          if (y > 720) { pdf.addPage(); y = margin }
+          pdf.setFontSize(11)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(30, 30, 30)
+          pdf.text(exp.position || 'Position', margin, y)
+          pdf.setFont('helvetica', 'normal')
+          pdf.setTextColor(100, 100, 100)
+          const dateStr = `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`
+          pdf.text(dateStr, pageWidth - margin, y, { align: 'right' })
+          y += 14
+          pdf.setFontSize(10)
+          pdf.setTextColor(60, 60, 60)
+          pdf.text(exp.company || '', margin, y)
+          y += 14
+          if (exp.description) {
+            addText(exp.description, 9)
+          }
+          y += 4
+        })
+      }
+
+      // Education
+      if (education.length > 0 && education.some(e => e.school || e.degree)) {
+        addSection('Education')
+        education.forEach((edu) => {
+          if (y > 720) { pdf.addPage(); y = margin }
+          pdf.setFontSize(11)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(30, 30, 30)
+          pdf.text(edu.degree || 'Degree', margin, y)
+          pdf.setFont('helvetica', 'normal')
+          pdf.setTextColor(100, 100, 100)
+          const dateStr = `${edu.startDate || ''} - ${edu.endDate || ''}`
+          pdf.text(dateStr, pageWidth - margin, y, { align: 'right' })
+          y += 14
+          pdf.setFontSize(10)
+          pdf.setTextColor(60, 60, 60)
+          pdf.text(edu.school || '', margin, y)
+          if (edu.gpa) {
+            pdf.text(`GPA: ${edu.gpa}`, pageWidth - margin, y, { align: 'right' })
+          }
+          y += 16
+        })
+      }
+
+      // Skills
+      if (skills.length > 0 && skills.some(s => s.name)) {
+        addSection('Skills')
+        const skillNames = skills.filter(s => s.name).map(s => s.name)
+        addText(skillNames.join(', '), 10)
+      }
+
+      // Projects
+      if (projects.length > 0 && projects.some(p => p.name)) {
+        addSection('Projects')
+        projects.forEach((proj) => {
+          if (y > 720) { pdf.addPage(); y = margin }
+          pdf.setFontSize(11)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(30, 30, 30)
+          pdf.text(proj.name || 'Project', margin, y)
+          y += 14
+          if (proj.description) {
+            addText(proj.description, 9)
+          }
+          if (proj.techStack) {
+            pdf.setFontSize(9)
+            pdf.setFont('helvetica', 'italic')
+            pdf.setTextColor(100, 100, 100)
+            pdf.text(`Tech: ${proj.techStack}`, margin, y)
+            y += 14
+          }
+          y += 4
+        })
+      }
+
+      // Certifications
+      if (certifications.length > 0 && certifications.some(c => c.name)) {
+        addSection('Certifications')
+        certifications.forEach((cert) => {
+          if (y > 720) { pdf.addPage(); y = margin }
+          addLine()
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(30, 30, 30)
+          pdf.text(cert.name || '', margin, y)
+          y += 13
+          pdf.setFont('helvetica', 'normal')
+          pdf.setTextColor(100, 100, 100)
+          const parts = [cert.issuer, cert.date].filter(Boolean).join(' - ')
+          if (parts) {
+            pdf.text(parts, margin, y)
+            y += 13
+          }
+          y += 2
+        })
+      }
+
+      pdf.save(`${personalInfo.firstName || 'Resume'}_${personalInfo.lastName || 'Craft'}.pdf`)
     } catch (error) {
       console.error('PDF download failed:', error)
       alert('Failed to generate PDF. Please try again.')
