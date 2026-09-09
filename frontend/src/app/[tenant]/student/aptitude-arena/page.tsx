@@ -6,6 +6,7 @@ import { Brain, Timer, Trophy, BarChart3, ArrowLeft, ArrowRight, Send } from 'lu
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks'
+import { mockQuestions } from '@/data/aptitude-questions'
 import {
   QuestionCard,
   QuestionPalette,
@@ -19,117 +20,6 @@ import {
 type Category = 'QUANTITATIVE' | 'LOGICAL_REASONING' | 'VERBAL_ABILITY'
 type Mode = 'PRACTICE' | 'EXAM'
 type View = 'SELECT' | 'EXAM' | 'RESULTS' | 'ANSWERS' | 'ANALYTICS'
-
-const mockQuestions = [
-  {
-    id: '1',
-    text: 'If x + y = 10 and x - y = 4, what is the value of x?',
-    options: { a: '6', b: '7', c: '8', d: '5' },
-    correctAnswer: 'b',
-    explanation: 'Adding the two equations: 2x = 14, so x = 7.',
-    difficulty: 'EASY',
-    category: 'QUANTITATIVE',
-  },
-  {
-    id: '2',
-    text: 'A train travels 120 km in 2 hours. What is its speed in km/h?',
-    options: { a: '50', b: '60', c: '70', d: '80' },
-    correctAnswer: 'b',
-    explanation: 'Speed = Distance / Time = 120 / 2 = 60 km/h.',
-    difficulty: 'EASY',
-    category: 'QUANTITATIVE',
-  },
-  {
-    id: '3',
-    text: 'Find the next number in the series: 2, 6, 12, 20, 30, ?',
-    options: { a: '40', b: '42', c: '44', d: '46' },
-    correctAnswer: 'b',
-    explanation: 'Differences: 4, 6, 8, 10, 12. Next = 30 + 12 = 42.',
-    difficulty: 'MEDIUM',
-    category: 'LOGICAL_REASONING',
-  },
-  {
-    id: '4',
-    text: 'Choose the synonym of "Ephemeral":',
-    options: { a: 'Permanent', b: 'Fleeting', c: 'Strong', d: 'Ancient' },
-    correctAnswer: 'b',
-    explanation: 'Ephemeral means lasting for a very short time (fleeting).',
-    difficulty: 'EASY',
-    category: 'VERBAL_ABILITY',
-  },
-  {
-    id: '5',
-    text: 'If 5 machines produce 5 widgets in 5 minutes, how long would 100 machines take to produce 100 widgets?',
-    options: { a: '100 minutes', b: '5 minutes', c: '20 minutes', d: '50 minutes' },
-    correctAnswer: 'b',
-    explanation: 'Each machine produces 1 widget in 5 minutes. So 100 machines produce 100 widgets in 5 minutes.',
-    difficulty: 'MEDIUM',
-    category: 'QUANTITATIVE',
-  },
-  {
-    id: '6',
-    text: 'A is taller than B. C is shorter than D. B is taller than D. Who is the tallest?',
-    options: { a: 'A', b: 'B', c: 'C', d: 'D' },
-    correctAnswer: 'a',
-    explanation: 'A > B, B > D, D > C. So A is the tallest.',
-    difficulty: 'EASY',
-    category: 'LOGICAL_REASONING',
-  },
-  {
-    id: '7',
-    text: 'If all roses are flowers, and some flowers fade quickly, which statement must be true?',
-    options: { a: 'All roses fade quickly', b: 'Some roses may fade quickly', c: 'No roses fade quickly', d: 'Roses never fade' },
-    correctAnswer: 'b',
-    explanation: 'Some flowers fade quickly, and roses are flowers, so some roses may fade quickly.',
-    difficulty: 'MEDIUM',
-    category: 'LOGICAL_REASONING',
-  },
-  {
-    id: '8',
-    text: 'Choose the antonym of "Benevolent":',
-    options: { a: 'Kind', b: 'Generous', c: 'Malevolent', d: 'Friendly' },
-    correctAnswer: 'c',
-    explanation: 'Benevolent means well-meaning and kindly. Malevolent means having or showing a wish to do evil.',
-    difficulty: 'EASY',
-    category: 'VERBAL_ABILITY',
-  },
-  {
-    id: '9',
-    text: 'Identify the correctly spelled word:',
-    options: { a: 'Occurrence', b: 'Occurance', c: 'Ocurrence', d: 'Occurrance' },
-    correctAnswer: 'a',
-    explanation: 'The correct spelling is "Occurrence" (double r, single c).',
-    difficulty: 'MEDIUM',
-    category: 'VERBAL_ABILITY',
-  },
-  {
-    id: '10',
-    text: 'In a certain code, COMPUTER is written as RFUVQNPC. How is MEDICINE written in that code?',
-    options: { a: 'EOJDJEFM', b: 'FOJDJDFN', c: 'FDJDJEFN', d: 'EOJEIDFM' },
-    correctAnswer: 'a',
-    explanation: 'Each letter is shifted: M→E, E→O, D→J, I→D, C→J, I→E, N→F, E→M. Pattern: reverse order from end.',
-    difficulty: 'HARD',
-    category: 'LOGICAL_REASONING',
-  },
-  {
-    id: '11',
-    text: 'The word "QUIXOTIC" is closest in meaning to:',
-    options: { a: 'Practical', b: 'Idealistic', c: 'Lazy', d: 'Clever' },
-    correctAnswer: 'b',
-    explanation: 'Quixotic means exceedingly idealistic, unrealistic, and impractical.',
-    difficulty: 'MEDIUM',
-    category: 'VERBAL_ABILITY',
-  },
-  {
-    id: '12',
-    text: 'A clock shows 3:15. What is the angle between the hour and minute hands?',
-    options: { a: '0 degrees', b: '7.5 degrees', c: '15 degrees', d: '22.5 degrees' },
-    correctAnswer: 'b',
-    explanation: 'At 3:15, the minute hand is at 90 degrees. The hour hand moves 0.5 degrees per minute, so at 3:15 it is at 90 + 7.5 = 97.5 degrees. Angle = 97.5 - 90 = 7.5 degrees.',
-    difficulty: 'MEDIUM',
-    category: 'QUANTITATIVE',
-  },
-]
 
 const categories = [
   { key: 'QUANTITATIVE' as Category, label: 'Quantitative Aptitude', icon: '📐' },
