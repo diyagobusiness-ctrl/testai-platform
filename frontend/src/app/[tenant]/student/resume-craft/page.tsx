@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import {
@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks'
+import { api } from '@/lib/api'
 
 function generateId() {
   return Math.random().toString(36).substring(2, 11)
@@ -44,7 +45,6 @@ export default function ResumeCraftPage() {
   const { tenant } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
   const [showPreview, setShowPreview] = useState(true)
-  const [isDownloading, setIsDownloading] = useState(false)
 
   // Form state
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
@@ -101,9 +101,26 @@ export default function ResumeCraftPage() {
   ])
 
   const [selectedTemplate, setSelectedTemplate] = useState('modern-blue')
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [credits, setCredits] = useState(0)
+
+  useEffect(() => {
+    api.getCredits()
+      .then((res) => {
+        const data = res.data as Record<string, unknown>
+        const c = data?.credits as { current_credits: number } | undefined
+        if (c) setCredits(c.current_credits)
+      })
+      .catch(() => {})
+    const handleCreditUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { current_credits: number } | undefined
+      if (detail) setCredits(detail.current_credits)
+    }
+    window.addEventListener('credits-updated', handleCreditUpdate)
+    return () => window.removeEventListener('credits-updated', handleCreditUpdate)
+  }, [])
 
   const totalSteps = 8
-  const credits = 150
 
   const canGoNext = currentStep < totalSteps - 1
   const canGoPrev = currentStep > 0

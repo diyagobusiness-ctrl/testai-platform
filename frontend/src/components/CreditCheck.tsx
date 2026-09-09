@@ -13,6 +13,7 @@ interface CreditInfo {
 export default function CreditCheck({ children }: { children: React.ReactNode }) {
   const [credits, setCredits] = useState<CreditInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
     const fetchCredits = () => {
@@ -23,8 +24,11 @@ export default function CreditCheck({ children }: { children: React.ReactNode })
           if (credits) {
             setCredits(credits)
           }
+          setHasError(false)
         })
-        .catch(() => {})
+        .catch(() => {
+          setHasError(true)
+        })
         .finally(() => setLoading(false))
     }
 
@@ -37,6 +41,32 @@ export default function CreditCheck({ children }: { children: React.ReactNode })
 
   if (loading) {
     return <>{children}</>
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md rounded-2xl border border-red-500/20 bg-card p-8 text-center shadow-xl"
+        >
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
+            <Coins className="h-8 w-8 text-red-500" />
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-foreground">Unable to Load Credits</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Could not verify your credit balance. Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => { setLoading(true); setHasError(false); api.getCredits().then((res) => { const data = res.data as Record<string, unknown>; const credits = data?.credits as CreditInfo | undefined; if (credits) setCredits(credits) }).catch(() => setHasError(true)).finally(() => setLoading(false)) }}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </motion.div>
+      </div>
+    )
   }
 
   const noCredits = credits && credits.current_credits <= 0

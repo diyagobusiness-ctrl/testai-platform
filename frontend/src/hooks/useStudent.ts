@@ -62,9 +62,25 @@ export function useStudent() {
     try {
       const response = await api.getProfile()
       const data = response.data as Record<string, unknown>
-      const student = data?.student as StudentData | undefined
-      if (student) {
-        setStudentData(student)
+      const raw = data?.student as Record<string, unknown> | undefined
+      if (raw) {
+        const mapped: StudentData = {
+          id: (raw.id as string) || '',
+          userId: (raw.userId as string) || (raw.id as string) || '',
+          tenantId: (raw.tenantId as string) || '',
+          enrollmentDate: (raw.enrollmentDate as string) || '',
+          isActive: raw.isActive !== undefined ? (raw.isActive as boolean) : true,
+          totalCredits: (raw.totalCredits as number) || 0,
+          currentCredits: (raw.currentCredits as number) || 0,
+          user: {
+            id: (raw.id as string) || '',
+            email: (raw.email as string) || '',
+            firstName: (raw.firstName as string) || '',
+            lastName: (raw.lastName as string) || '',
+            avatarUrl: raw.avatarUrl as string | undefined,
+          },
+        }
+        setStudentData(mapped)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch student data')
@@ -145,8 +161,8 @@ export function useStudent() {
     return studentData ? studentData.currentCredits >= required : false
   }
 
-  const creditUsagePercentage = studentData
-    ? ((studentData.totalCredits - studentData.currentCredits) / studentData.totalCredits) * 100
+  const creditUsagePercentage = studentData && studentData.totalCredits > 0
+    ? Math.round(((studentData.totalCredits - studentData.currentCredits) / studentData.totalCredits) * 100)
     : 0
 
   return {
