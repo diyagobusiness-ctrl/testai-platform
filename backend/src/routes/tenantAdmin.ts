@@ -734,22 +734,23 @@ router.put('/settings', async (req, res) => {
 
     const result = await pool.query(
       `UPDATE tenants
-       SET name = COALESCE($1, name),
-           logo_url = COALESCE($2, logo_url),
-           business_name = COALESCE($3, business_name),
-           primary_color = COALESCE($4, primary_color),
-           accent_color = COALESCE($5, accent_color),
-           custom_domain = COALESCE($6, custom_domain),
-           welcome_message = COALESCE($7, welcome_message),
-           footer_text = COALESCE($8, footer_text),
-           favicon_url = COALESCE($9, favicon_url),
+       SET name = $1,
+           logo_url = $2,
+           business_name = $3,
+           primary_color = $4,
+           accent_color = $5,
+           custom_domain = $6,
+           welcome_message = $7,
+           footer_text = $8,
+           favicon_url = $9,
            updated_at = NOW()
        WHERE id = $10
        RETURNING name, slug, logo_url, subscription_plan, business_name,
                  primary_color, accent_color, custom_domain, welcome_message,
                  footer_text, favicon_url`,
-      [name, logoUrl, businessName, primaryColor, accentColor,
-       customDomain, welcomeMessage, footerText, faviconUrl, tenantId]
+      [name, logoUrl || null, businessName || null, primaryColor || '#6366f1',
+       accentColor || '#8b5cf6', customDomain || null, welcomeMessage || null,
+       footerText || null, faviconUrl || null, tenantId]
     )
 
     res.json({
